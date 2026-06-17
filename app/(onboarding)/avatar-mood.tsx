@@ -1,21 +1,24 @@
-import { FlatList, Pressable, ScrollView, StyleSheet, View, SafeAreaView } from 'react-native';
-import Animated, { FadeIn, Easing } from 'react-native-reanimated';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
-import { Button } from '@/components/ui/Button';
-import { GradientBackground } from '@/components/ui/GradientBackground';
 import { MoodChip } from '@/components/ui/MoodChip';
 import { Text, Heading } from '@/components/ui/Text';
 import { MOOD_OPTIONS } from '@/constants/moods';
 import { useCompleteOnboarding } from '@/hooks/useAuth';
 import { useOnboardingStore } from '@/store/onboarding.store';
 import { colors } from '@/theme/colors';
-import { spacing, borderRadius } from '@/theme/spacing';
+import { spacing } from '@/theme/spacing';
+
+const PINK = '#FF2D55';
+const BLUE = '#3B82F6';
 
 export default function AvatarMoodScreen() {
   const { username, alias, avatarId, mood, language, age, setAvatarId, setMood } = useOnboardingStore();
   const completeOnboarding = useCompleteOnboarding();
-  const fastEase = Easing.out(Easing.quad);
 
   const displayAlias = alias || 'You';
 
@@ -32,87 +35,154 @@ export default function AvatarMoodScreen() {
   };
 
   return (
-    <GradientBackground mood={mood ?? undefined}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View entering={FadeIn.duration(400).easing(fastEase)} style={styles.header}>
-          <Heading level={2} style={styles.title}>Complete Profile</Heading>
-          <Text variant="bodySmall" style={styles.subtitle}>
-            Select your avatar and current mood. This helps us find the best connections for you.
-          </Text>
-        </Animated.View>
-
-        <Animated.View entering={FadeIn.duration(400).easing(fastEase).delay(100)} style={styles.section}>
-          <Text style={styles.sectionLabel}>AVATAR</Text>
-          <View style={styles.sectionContent}>
-            <FlatList
-              data={AVATAR_OPTIONS}
-              numColumns={3}
-              scrollEnabled={false}
-              keyExtractor={(item) => item}
-              contentContainerStyle={styles.grid}
-              columnWrapperStyle={styles.row}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => setAvatarId(item)}
-                  style={[styles.avatarItem, avatarId === item && styles.avatarSelected]}
-                >
-                  <Avatar avatarId={item} alias={displayAlias} size={72} />
-                </Pressable>
-              )}
-            />
+    <View style={styles.mainContainer}>
+      <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
+      <SafeAreaView style={styles.safeArea}>
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.stepIndicator}>
+            <View style={[styles.stepDot, styles.stepDotCompleted]} />
+            <View style={[styles.stepDot, styles.stepDotActive]} />
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeIn.duration(400).easing(fastEase).delay(200)} style={styles.section}>
-          <Text style={styles.sectionLabel}>CURRENT MOOD</Text>
-          <View style={[styles.sectionContent, styles.chips]}>
-            {MOOD_OPTIONS.map((option) => (
-              <MoodChip
-                key={option.id}
-                mood={option}
-                selected={mood === option.id}
-                onPress={setMood}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Title */}
+          <Animated.View entering={FadeIn.duration(600)}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="color-palette-outline" size={28} color={PINK} />
+            </View>
+            <Heading level={1} style={styles.title}>Your Vibe</Heading>
+            <Text style={styles.subtitle}>
+              Choose an avatar and set your current mood to start matching.
+            </Text>
+          </Animated.View>
+
+          {/* Avatar Section */}
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.section}>
+            <Text style={styles.sectionLabel}>CHOOSE AVATAR</Text>
+            <View style={styles.sectionContent}>
+              <FlatList
+                data={AVATAR_OPTIONS}
+                numColumns={3}
+                scrollEnabled={false}
+                keyExtractor={(item) => item}
+                contentContainerStyle={styles.grid}
+                columnWrapperStyle={styles.row}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => setAvatarId(item)}
+                    style={[styles.avatarItem, avatarId === item && styles.avatarSelected]}
+                  >
+                    <Avatar avatarId={item} alias={displayAlias} size={80} />
+                    {avatarId === item && (
+                      <View style={styles.avatarCheck}>
+                        <Ionicons name="checkmark" size={16} color="white" />
+                      </View>
+                    )}
+                  </Pressable>
+                )}
               />
-            ))}
-          </View>
-        </Animated.View>
+            </View>
+          </Animated.View>
 
-        <Animated.View entering={FadeIn.duration(400).easing(fastEase).delay(300)} style={styles.submitContainer}>
-          <Button
-            title="Complete Setup"
-            loading={completeOnboarding.isPending}
-            disabled={!mood}
-            onPress={handleFinish}
-          />
-        </Animated.View>
-      </ScrollView>
-    </GradientBackground>
+          {/* Mood Section */}
+          <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.section}>
+            <Text style={styles.sectionLabel}>CURRENT MOOD</Text>
+            <View style={[styles.sectionContent, styles.chips]}>
+              {MOOD_OPTIONS.map((option) => (
+                <MoodChip
+                  key={option.id}
+                  mood={option}
+                  selected={mood === option.id}
+                  onPress={setMood}
+                />
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* Footer */}
+          <Animated.View entering={FadeInDown.duration(500).delay(450)} style={styles.footer}>
+            <Pressable 
+              style={[styles.submitBtn, !mood && styles.submitBtnDisabled]} 
+              onPress={handleFinish}
+              disabled={!mood || completeOnboarding.isPending}
+            >
+              {mood ? (
+                <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+              ) : null}
+              {completeOnboarding.isPending ? (
+                <Text style={styles.submitBtnText}>Setting up...</Text>
+              ) : (
+                <>
+                  <Text style={[styles.submitBtnText, !mood && styles.submitBtnTextDisabled]}>Complete Setup</Text>
+                  <Ionicons name="sparkles" size={20} color={mood ? "white" : "rgba(255,255,255,0.3)"} />
+                </>
+              )}
+            </Pressable>
+          </Animated.View>
+
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: { flex: 1, backgroundColor: '#000' },
+  safeArea: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  stepDot: {
+    width: 24,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  stepDotCompleted: {
+    backgroundColor: BLUE,
+  },
+  stepDotActive: {
+    backgroundColor: PINK,
+    width: 32,
+  },
+  scrollContent: {
     flexGrow: 1,
     paddingHorizontal: spacing['2xl'],
-    paddingTop: spacing.xl,
     paddingBottom: spacing['4xl'],
   },
-  header: {
-    marginBottom: spacing['2xl'],
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,45,85,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+    marginTop: spacing.md,
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    marginBottom: spacing.xs,
+    fontWeight: '800',
+    color: colors.white,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
-    color: colors.foregroundSecondary,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: spacing['2xl'],
   },
   section: {
     marginBottom: spacing['2xl'],
@@ -120,9 +190,10 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.foregroundMuted,
-    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 1.5,
     marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
   },
   sectionContent: {
     paddingTop: spacing.xs,
@@ -132,24 +203,58 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   avatarItem: {
-    padding: spacing.xs,
-    borderRadius: borderRadius.full,
+    padding: 4,
+    borderRadius: 50,
     borderWidth: 2,
     borderColor: 'transparent',
+    position: 'relative',
   },
   avatarSelected: {
-    borderColor: colors.white,
+    borderColor: PINK,
+  },
+  avatarCheck: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: PINK,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  submitContainer: {
+  footer: {
     marginTop: 'auto',
     paddingTop: spacing.xl,
+  },
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+  },
+  submitBtnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  submitBtnText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  submitBtnTextDisabled: {
+    color: 'rgba(255,255,255,0.3)',
   },
 });
