@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS } from 'react-native-reanimated';
+import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS, interpolate, withDelay } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,8 +41,7 @@ export default function MatchingScreen() {
         translateX.value = withTiming(SLIDE_DISTANCE, {}, (finished) => {
           if (finished) {
             runOnJS(handleStartSearch)();
-            // Optional: reset after navigation
-            // runOnJS(setTimeout)(() => { translateX.value = withTiming(0); }, 500);
+            translateX.value = withDelay(400, withTiming(0, { duration: 300 }));
           }
         });
       } else {
@@ -57,6 +56,7 @@ export default function MatchingScreen() {
   // Subtle floating animations for the cards and icons
   const float1 = useSharedValue(0);
   const float2 = useSharedValue(0);
+  const chevronAnim = useSharedValue(0);
 
   useEffect(() => {
     float1.value = withRepeat(
@@ -77,7 +77,28 @@ export default function MatchingScreen() {
       -1,
       true
     );
+
+    chevronAnim.value = withRepeat(
+      withTiming(1, { duration: 1500, easing: Easing.linear }),
+      -1,
+      false
+    );
   }, []);
+
+  const getChevronStyle = (index: number) => {
+    return useAnimatedStyle(() => {
+      // Offset each chevron's animation phase so they light up sequentially
+      const phase = (chevronAnim.value - index * 0.2 + 1) % 1;
+      return {
+        opacity: interpolate(phase, [0, 0.5, 1], [0.1, 1, 0.1]),
+        transform: [{ translateX: interpolate(phase, [0, 1], [0, 10]) }]
+      };
+    });
+  };
+
+  const chevronStyle1 = getChevronStyle(0);
+  const chevronStyle2 = getChevronStyle(1);
+  const chevronStyle3 = getChevronStyle(2);
 
   const animatedStyle1 = useAnimatedStyle(() => ({ transform: [{ translateY: float1.value }, { rotate: '-12deg' }] }));
   const animatedStyle2 = useAnimatedStyle(() => ({ transform: [{ translateY: float2.value }, { rotate: '15deg' }] }));
@@ -101,12 +122,20 @@ export default function MatchingScreen() {
             
             {/* Left Card */}
             <Animated.View style={[styles.card, styles.leftCard, animatedStyle1]}>
-              <LinearGradient colors={['#0EA5E9', '#A855F7']} style={styles.cardGradient} />
+              <Image 
+                source={{ uri: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80' }} 
+                style={styles.cardImage} 
+              />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
             </Animated.View>
 
             {/* Right Card */}
             <Animated.View style={[styles.card, styles.rightCard, animatedStyle2]}>
-              <LinearGradient colors={['#E11D48', '#B91C1C']} style={styles.cardGradient} />
+              <Image 
+                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80' }} 
+                style={styles.cardImage} 
+              />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
             </Animated.View>
 
             {/* Floating Badges */}
@@ -124,8 +153,8 @@ export default function MatchingScreen() {
 
           {/* Typography */}
           <Animated.View entering={FadeIn.duration(600).delay(400)} style={styles.textSection}>
-            <Text style={styles.discoverText}>Discover Real People</Text>
             <Text style={styles.discoverText}>
+              Discover Real People{'\n'}
               <Text style={styles.highlightText}>Match</Text> Instantly
             </Text>
             <Text style={styles.subtitleText}>
@@ -139,9 +168,15 @@ export default function MatchingScreen() {
               <Text style={styles.buttonText}>Slide to Find Match</Text>
               
               <View style={styles.chevronGroup}>
-                <Ionicons name="chevron-forward-outline" size={20} color="rgba(255,255,255,0.4)" />
-                <Ionicons name="chevron-forward-outline" size={20} color="rgba(255,255,255,0.7)" style={{ marginLeft: -10 }} />
-                <Ionicons name="chevron-forward-outline" size={20} color="white" style={{ marginLeft: -10 }} />
+                <Animated.View style={chevronStyle1}>
+                  <Ionicons name="chevron-forward-outline" size={20} color="white" />
+                </Animated.View>
+                <Animated.View style={[chevronStyle2, { marginLeft: -10 }]}>
+                  <Ionicons name="chevron-forward-outline" size={20} color="white" />
+                </Animated.View>
+                <Animated.View style={[chevronStyle3, { marginLeft: -10 }]}>
+                  <Ionicons name="chevron-forward-outline" size={20} color="white" />
+                </Animated.View>
               </View>
 
               <GestureDetector gesture={panGesture}>
@@ -208,6 +243,19 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     flex: 1,
+  },
+  cardImage: { 
+    flex: 1, 
+    width: '100%', 
+    height: '100%', 
+    resizeMode: 'cover' 
+  },
+  cardGradientOverlay: { 
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0, 
+    height: '40%' 
   },
   leftCard: {
     left: '10%',
