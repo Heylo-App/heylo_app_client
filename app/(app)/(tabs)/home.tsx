@@ -79,22 +79,7 @@ const PulseDot = ({ color }: { color: string }) => {
   );
 };
 
-// ── Spotlight Data ─────────────────────────────────────────────
-const SPOTLIGHT_DATA = [
-  { id: '1', avatarId: 'avatar-1', alias: 'Luna', mood: '😊 Happy', gradientColors: ['#FF2D55', '#A855F7'] as const },
-  { id: '2', avatarId: 'avatar-2', alias: 'Shadow', mood: '🎵 Chill', gradientColors: ['#0EA5E9', '#6366F1'] as const },
-  { id: '3', avatarId: 'avatar-3', alias: 'Nova', mood: '🔥 Excited', gradientColors: ['#F59E0B', '#EF4444'] as const },
-  { id: '4', avatarId: 'avatar-4', alias: 'Echo', mood: '💜 Calm', gradientColors: ['#8B5CF6', '#EC4899'] as const },
-  { id: '5', avatarId: 'avatar-5', alias: 'Drift', mood: '🌙 Dreamy', gradientColors: ['#14B8A6', '#3B82F6'] as const },
-];
 
-// ── Quick Action Data ──────────────────────────────────────────
-const QUICK_ACTIONS = [
-  { id: 'match', icon: 'heart', label: 'Match', color: PINK },
-  { id: 'explore', icon: 'compass', label: 'Explore', color: BLUE },
-  { id: 'events', icon: 'calendar', label: 'Events', color: PURPLE },
-  { id: 'mood', icon: 'happy', label: 'Mood', color: AMBER },
-];
 
 // ── Mood Streak Data ───────────────────────────────────────────
 const STREAK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -129,24 +114,7 @@ export default function HomeScreen() {
             <Text style={styles.statusText}>1,204 vibes active right now</Text>
           </Animated.View>
 
-          {/* ── Quick Actions Row ──────────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.quickActionsRow}>
-            {QUICK_ACTIONS.map((action) => (
-              <Pressable
-                key={action.id}
-                style={styles.quickAction}
-                onPress={() => {
-                  if (action.id === 'match') router.push(Routes.app.matching);
-                  else alert(`${action.label} coming soon!`);
-                }}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
-                  <Ionicons name={action.icon as any} size={22} color="white" />
-                </View>
-                <Text style={styles.quickActionLabel}>{action.label}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
+
 
           {/* ── Hero Card: Find Connection ─────────────────── */}
           <Animated.View entering={FadeInDown.duration(600).delay(200)}>
@@ -166,31 +134,7 @@ export default function HomeScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* ── Spotlight: Active Vibes ─────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(300)}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Vibes</Text>
-              <Pressable><Text style={styles.seeAllText}>See All</Text></Pressable>
-            </View>
-            <FlatList
-              horizontal
-              data={SPOTLIGHT_DATA}
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.spotlightList}
-              renderItem={({ item }) => (
-                <Pressable style={styles.spotlightCard} onPress={() => alert(`${item.alias} is vibing!`)}>
-                  <LinearGradient colors={[...item.gradientColors]} style={styles.spotlightGradient}>
-                    <View style={styles.spotlightAvatarRing}>
-                      <Avatar avatarId={item.avatarId} alias={item.alias} size={56} />
-                    </View>
-                    <Text style={styles.spotlightName}>{item.alias}</Text>
-                    <Text style={styles.spotlightMood}>{item.mood}</Text>
-                  </LinearGradient>
-                </Pressable>
-              )}
-            />
-          </Animated.View>
+
 
           {/* ── Two‑up: Chats + Voice ──────────────────────── */}
           <View style={styles.row}>
@@ -278,47 +222,7 @@ export default function HomeScreen() {
             </View>
           </Animated.View>
 
-          {/* ── Upcoming Events ─────────────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(650)}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              <Pressable><Text style={styles.seeAllText}>View All</Text></Pressable>
-            </View>
 
-            <Pressable style={styles.eventCard} onPress={() => alert('Event details coming soon!')}>
-              <LinearGradient colors={[CYAN, BLUE]} style={styles.eventGradientStrip} />
-              <View style={styles.eventContent}>
-                <View style={styles.eventDateBubble}>
-                  <Text style={styles.eventDateDay}>21</Text>
-                  <Text style={styles.eventDateMonth}>JUN</Text>
-                </View>
-                <View style={styles.eventTextContent}>
-                  <Text style={styles.eventTitle}>Midnight Vibe Check</Text>
-                  <Text style={styles.eventSubtitle}>Anonymous group chat party • 11PM</Text>
-                </View>
-                <View style={styles.eventJoinBadge}>
-                  <Text style={styles.eventJoinText}>Join</Text>
-                </View>
-              </View>
-            </Pressable>
-
-            <Pressable style={[styles.eventCard, { marginTop: spacing.md }]} onPress={() => alert('Event details coming soon!')}>
-              <LinearGradient colors={[PURPLE, PINK]} style={styles.eventGradientStrip} />
-              <View style={styles.eventContent}>
-                <View style={styles.eventDateBubble}>
-                  <Text style={styles.eventDateDay}>28</Text>
-                  <Text style={styles.eventDateMonth}>JUN</Text>
-                </View>
-                <View style={styles.eventTextContent}>
-                  <Text style={styles.eventTitle}>Speed Matching Night</Text>
-                  <Text style={styles.eventSubtitle}>5 minute convos • 8PM</Text>
-                </View>
-                <View style={styles.eventJoinBadge}>
-                  <Text style={styles.eventJoinText}>Join</Text>
-                </View>
-              </View>
-            </Pressable>
-          </Animated.View>
 
           {/* ── Safety / Privacy Banner ─────────────────────── */}
           <Animated.View entering={FadeInDown.duration(500).delay(700)}>
