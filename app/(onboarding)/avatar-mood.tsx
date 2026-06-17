@@ -53,9 +53,6 @@ export default function AvatarMoodScreen() {
         >
           {/* Title */}
           <Animated.View entering={FadeIn.duration(600)}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="color-palette-outline" size={28} color={PINK} />
-            </View>
             <Heading level={1} style={styles.title}>Your Vibe</Heading>
             <Text style={styles.subtitle}>
               Choose an avatar and set your current mood to start matching.
@@ -176,6 +173,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     color: colors.white,
+    marginTop: spacing['2xl'],
     marginBottom: spacing.sm,
   },
   subtitle: {

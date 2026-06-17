@@ -1,8 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
 
-import { Text } from '@/components/ui/Text';
 import { moodGradients } from '@/theme/gradients';
 import { colors } from '@/theme/colors';
 import type { MoodType } from '@/constants/moods';
@@ -31,20 +30,23 @@ export const Avatar = memo(function Avatar({
   mood,
   showOnline,
 }: AvatarProps) {
-const DEFAULT_GRADIENT = ['#8B5CF6', '#EC4899'] as const;
+  const DEFAULT_GRADIENT = ['#8B5CF6', '#EC4899'] as const;
 
   const gradientColors =
     (mood ? moodGradients[mood] : AVATAR_COLORS[avatarId]) ?? DEFAULT_GRADIENT;
   const [colorStart, colorEnd] = gradientColors;
-  const initial = alias?.charAt(0).toUpperCase() ?? '?';
 
   return (
     <View style={{ width: size, height: size }}>
       <LinearGradient
         colors={[colorStart ?? DEFAULT_GRADIENT[0], colorEnd ?? DEFAULT_GRADIENT[1]]}
-        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }]}
       >
-        <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initial}</Text>
+        <Image 
+          source={{ uri: `https://api.dicebear.com/9.x/micah/png?seed=${avatarId}&backgroundColor=transparent` }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
       </LinearGradient>
       {showOnline ? <View style={[styles.online, { right: 0, bottom: 0 }]} /> : null}
     </View>
@@ -55,10 +57,6 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  initial: {
-    color: colors.white,
-    fontWeight: '700',
   },
   online: {
     position: 'absolute',

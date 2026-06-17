@@ -69,9 +69,7 @@ export default function ProfileDetailsScreen() {
           >
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="id-card-outline" size={28} color={BLUE} />
-              </View>
+              
               <Heading level={1} style={styles.title}>Your Identity</Heading>
               <Text style={styles.subtitle}>
                 Set up your anonymous identity. This is what others will see.
@@ -214,6 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     color: colors.white,
+    marginTop: spacing['2xl'],
     marginBottom: spacing.sm,
   },
   subtitle: {

@@ -62,9 +62,7 @@ export default function LoginScreen() {
           >
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="log-in-outline" size={28} color={PINK} />
-              </View>
+              <Text style={styles.logo}>heylo.</Text>
               <Heading level={1} style={styles.title}>Welcome Back</Heading>
               <Text style={styles.subtitle}>
                 Sign in to continue your anonymous journey.
@@ -169,14 +167,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing['2xl'],
     paddingBottom: spacing['4xl'],
   },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,45,85,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
+  logo: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: PINK,
+    letterSpacing: -1,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   title: {
     fontSize: 32,

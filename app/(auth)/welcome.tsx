@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import { StyleSheet, View, Pressable, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
@@ -59,12 +59,21 @@ export default function WelcomeScreen() {
 
             {/* Floating illustration area */}
             <View style={styles.illustrationArea}>
-              {/* Gradient cards like matching screen */}
+              {/* Floating Cards with Images */}
               <Animated.View entering={FadeIn.duration(800).delay(200)} style={[styles.card, styles.leftCard]}>
-                <LinearGradient colors={['#0EA5E9', '#A855F7']} style={styles.cardGradient} />
+                <Image 
+                  source={{ uri: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop&q=80' }} 
+                  style={styles.cardImage} 
+                />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
               </Animated.View>
+              
               <Animated.View entering={FadeIn.duration(800).delay(300)} style={[styles.card, styles.rightCard]}>
-                <LinearGradient colors={[PINK, '#E11D48']} style={styles.cardGradient} />
+                <Image 
+                  source={{ uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80' }} 
+                  style={styles.cardImage} 
+                />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
               </Animated.View>
 
               {/* Floating badges */}
@@ -85,10 +94,6 @@ export default function WelcomeScreen() {
 
             {/* Feature pills */}
             <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.featurePills}>
-              <View style={styles.pill}>
-                <Ionicons name="lock-closed" size={14} color={EMERALD} />
-                <Text style={styles.pillText}>End-to-End Encrypted</Text>
-              </View>
               <View style={styles.pill}>
                 <Ionicons name="eye-off" size={14} color={PURPLE} />
                 <Text style={styles.pillText}>100% Anonymous</Text>
@@ -165,6 +170,8 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   cardGradient: { flex: 1 },
+  cardImage: { flex: 1, width: '100%', height: '100%', resizeMode: 'cover' },
+  cardGradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
   leftCard: { left: '8%', transform: [{ rotate: '-12deg' }], zIndex: 1 },
   rightCard: { right: '8%', transform: [{ rotate: '10deg' }], zIndex: 2, marginTop: 30 },
 

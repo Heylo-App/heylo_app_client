@@ -71,9 +71,6 @@ export default function RegisterScreen() {
           >
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="person-add-outline" size={28} color={PINK} />
-              </View>
               <Heading level={1} style={styles.title}>Create Account</Heading>
               <Text style={styles.subtitle}>
                 Start your anonymous journey. Your identity stays yours.
@@ -98,10 +95,7 @@ export default function RegisterScreen() {
                       onBlur={onBlur}
                       error={errors.email?.message}
                     />
-                    <View style={styles.fieldHint}>
-                      <Ionicons name="eye-off-outline" size={14} color="rgba(255,255,255,0.3)" />
-                      <Text style={styles.fieldHintText}>Never shared publicly</Text>
-                    </View>
+                    
                   </View>
                 )}
               />
@@ -128,6 +122,7 @@ export default function RegisterScreen() {
                 control={control}
                 name="confirmPassword"
                 render={({ field: { onChange, onBlur, value } }) => (
+                  <View>
                   <Input
                     label="Confirm Password"
                     placeholder="Re-enter your password"
@@ -139,6 +134,11 @@ export default function RegisterScreen() {
                     onBlur={onBlur}
                     error={errors.confirmPassword?.message}
                   />
+<View style={styles.fieldHint}>
+                      <Ionicons name="eye-off-outline" size={14} color="rgba(255,255,255,0.3)" />
+                      <Text style={styles.fieldHintText}>Never shared publicly</Text>
+                    </View>
+                    </View>
                 )}
               />
 
@@ -219,19 +219,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing['2xl'],
     paddingBottom: spacing['4xl'],
   },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,45,85,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
+
   title: {
     fontSize: 32,
     fontWeight: '800',
     color: colors.white,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   subtitle: {
@@ -301,6 +294,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: PINK,
-    fontWeight: '700',
+    fontWeight: '600',
+    fontSize: 13,
   },
 });
