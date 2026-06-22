@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS, interpolate, withDelay } from 'react-native-reanimated';
@@ -114,7 +114,11 @@ export default function MatchingScreen() {
           
           {/* Top Title */}
           <Animated.View entering={FadeIn.duration(600).easing(Easing.out(Easing.quad))} style={styles.header}>
+            <View style={styles.headerLeft} />
             <Heading level={1} style={styles.mainTitle}>Heylo</Heading>
+            <Pressable onPress={() => router.push('/(app)/history')} style={styles.headerRight}>
+              <Ionicons name="chatbubbles-outline" size={28} color="white" />
+            </Pressable>
           </Animated.View>
 
           {/* Hero Cards Area */}
@@ -212,8 +216,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing['2xl'],
+    width: '100%',
+  },
+  headerLeft: {
+    width: 48,
+  },
+  headerRight: {
+    width: 48,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   mainTitle: {
     fontSize: 32,

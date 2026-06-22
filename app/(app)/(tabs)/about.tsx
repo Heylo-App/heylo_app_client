@@ -76,35 +76,14 @@ export default function AboutScreen() {
 
           {/* ── Profile Header ──────────────────────────────── */}
           <Animated.View entering={FadeIn.duration(600)} style={styles.profileHeader}>
+            <Pressable style={styles.topRightEditBtn} onPress={() => alert('Edit Profile coming soon!')}>
+              <Ionicons name="pencil" size={16} color="rgba(255,255,255,0.8)" />
+            </Pressable>
+
             <View style={styles.avatarRing}>
-              <Avatar avatarId={user.avatarId} alias={user.alias} size={100} />
+              <Avatar avatarId={user.avatarId} alias={user.alias} size={84} />
             </View>
             <Heading level={1} style={styles.aliasText}>{user.alias}</Heading>
-            <Text style={styles.sessionTag}>Current Session Identity</Text>
-
-            {/* Stats Row */}
-            <View style={styles.profileStatsRow}>
-              <View style={styles.profileStat}>
-                <Text style={styles.profileStatValue}>{user.reputation || 0}</Text>
-                <Text style={styles.profileStatLabel}>Trust Score</Text>
-              </View>
-              <View style={styles.profileStatDivider} />
-              <View style={styles.profileStat}>
-                <Text style={styles.profileStatValue}>{user.mood || '—'}</Text>
-                <Text style={styles.profileStatLabel}>Mood</Text>
-              </View>
-              <View style={styles.profileStatDivider} />
-              <View style={styles.profileStat}>
-                <Text style={styles.profileStatValue}>{user.age || '—'}</Text>
-                <Text style={styles.profileStatLabel}>Age</Text>
-              </View>
-            </View>
-
-            {/* Edit Profile Button */}
-            <Pressable style={styles.editProfileBtn} onPress={() => alert('Edit Profile coming soon!')}>
-              <Ionicons name="pencil" size={16} color={PINK} />
-              <Text style={styles.editProfileText}>Edit Profile</Text>
-            </Pressable>
           </Animated.View>
 
           {/* ── Account Section ─────────────────────────────── */}
@@ -149,25 +128,11 @@ export default function AboutScreen() {
               />
               <View style={styles.menuDivider} />
               <MenuRow
-                icon="notifications-outline"
-                iconColor={AMBER}
-                label="Notifications"
-                onPress={() => alert('Notification settings coming soon!')}
-              />
-              <View style={styles.menuDivider} />
-              <MenuRow
                 icon="moon-outline"
                 iconColor={PURPLE}
                 label="Appearance"
                 value="Dark"
                 onPress={() => alert('Appearance settings coming soon!')}
-              />
-              <View style={styles.menuDivider} />
-              <MenuRow
-                icon="volume-medium-outline"
-                iconColor={BLUE}
-                label="Sounds & Haptics"
-                onPress={() => alert('Sound settings coming soon!')}
               />
             </View>
           </Animated.View>
@@ -283,9 +248,9 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: spacing['2xl'],
-    paddingTop: spacing['2xl'],
+    paddingTop: spacing.lg,
     paddingBottom: 120,
-    gap: spacing['2xl'],
+    gap: spacing.md,
   },
 
   // ── Profile Header ───────────────────────────────────────
@@ -293,11 +258,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarRing: {
-    padding: 4,
-    borderRadius: 56,
-    borderWidth: 2.5,
+    padding: 3,
+    borderRadius: 45,
+    borderWidth: 2,
     borderColor: PINK,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   aliasText: {
     fontSize: 28,
@@ -305,60 +270,19 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginBottom: 6,
   },
-  sessionTag: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PINK,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: spacing['2xl'],
-  },
-  profileStatsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20,
-    paddingVertical: spacing.lg,
-    width: '100%',
+  topRightEditBtn: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: spacing.xl,
-  },
-  profileStat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  profileStatValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.white,
-    marginBottom: 4,
-    textTransform: 'capitalize',
-  },
-  profileStatLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  profileStatDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: PINK,
-  },
-  editProfileText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: PINK,
   },
 
   // ── Section Labels ───────────────────────────────────────
@@ -382,7 +306,7 @@ const styles = StyleSheet.create({
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
   menuIconBg: {
