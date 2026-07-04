@@ -1,9 +1,9 @@
 import { StyleSheet, View, FlatList, Pressable, Switch, TextInput, Dimensions } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeIn, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, SlideInDown, SlideOutDown, SlideOutLeft, LinearTransition } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
@@ -40,6 +40,7 @@ export default function ExploreScreen() {
   const [isActive, setIsActive] = useState(false);
   const [showActiveSetup, setShowActiveSetup] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [profiles, setProfiles] = useState(MOCK_PROFILES);
   
   // Setup forms
   const [myMood, setMyMood] = useState<MoodType | null>(null);
@@ -67,8 +68,8 @@ export default function ExploreScreen() {
     }
   };
 
-  const handleRequestJoin = (profileId: string) => {
-    alert('Match request sent!');
+  const handleSkip = (profileId: string) => {
+    setProfiles((prev) => prev.filter((p) => p.id !== profileId));
   };
 
   const renderActiveDashboard = () => {
@@ -115,32 +116,9 @@ export default function ExploreScreen() {
     );
   };
 
-  const renderProfileCard = ({ item, index }: { item: typeof MOCK_PROFILES[0], index: number }) => {
-    const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
-
-    return (
-      <Animated.View entering={FadeInDown.duration(500).delay(index * 50)} style={styles.card}>
-        <View style={styles.cardTopRow}>
-          <Avatar avatarId={item.avatarId} alias={item.alias} size={44} />
-          <View style={{ flex: 1, marginLeft: spacing.sm }}>
-            <Heading level={3} style={styles.alias}>{item.alias}</Heading>
-            <Text style={styles.cardMoodLabel}>{mood.label} {mood.emoji}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.vibeText}>"{item.vibe}"</Text>
-
-        <View style={styles.cardActions}>
-          <Pressable style={styles.skipBtn} onPress={() => alert('Skipped')}>
-            <Text style={styles.skipBtnText}>Skip</Text>
-          </Pressable>
-          <Pressable onPress={() => handleRequestJoin(item.id)} style={styles.connectBtn}>
-            <Text style={styles.connectBtnText}>Connect</Text>
-          </Pressable>
-        </View>
-      </Animated.View>
-    );
-  };
+  const renderProfileCard = ({ item, index }: { item: typeof MOCK_PROFILES[0], index: number }) => (
+    <ProfileCard key={item.id} item={item} index={index} onSkip={handleSkip} />
+  );
 
   return (
     <View style={styles.mainContainer}>
@@ -160,7 +138,7 @@ export default function ExploreScreen() {
                   value={isActive}
                   onValueChange={handleToggleActive}
                   trackColor={{ false: 'rgba(255,255,255,0.2)', true: PINK_ACCENT }}
-                  thumbColor={colors.white}
+                  thumbColor={'white'}
                   ios_backgroundColor="rgba(255,255,255,0.2)"
                   style={{ transform: [{ scale: 0.75 }] }}
                 />
@@ -171,9 +149,9 @@ export default function ExploreScreen() {
 
         {/* Feed */}
         <FlatList
-          data={MOCK_PROFILES}
+          data={profiles}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderActiveDashboard}
+          ListHeaderComponent={renderActiveDashboard()}
           renderItem={renderProfileCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -182,7 +160,7 @@ export default function ExploreScreen() {
 
       {/* Setup Active Modal */}
       {showActiveSetup && (
-        <Animated.View entering={SlideInDown.duration(400).springify()} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
+        <Animated.View entering={FadeInDown.duration(300)} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
           <BlurView intensity={80} tint="dark" style={styles.overlay}>
             <Pressable style={styles.overlayClose} onPress={() => setShowActiveSetup(false)} />
             <View style={styles.sheetContent}>
@@ -225,7 +203,7 @@ export default function ExploreScreen() {
 
       {/* Requests Modal */}
       {showRequests && (
-        <Animated.View entering={SlideInDown.duration(400).springify()} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
+        <Animated.View entering={FadeInDown.duration(300)} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
           <BlurView intensity={80} tint="dark" style={styles.overlay}>
             <Pressable style={styles.overlayClose} onPress={() => setShowRequests(false)} />
             <View style={[styles.sheetContent, { maxHeight: height * 0.85 }]}>
@@ -271,6 +249,61 @@ export default function ExploreScreen() {
   );
 }
 
+const ProfileCard = ({ item, index, onSkip }: { item: typeof MOCK_PROFILES[0], index: number, onSkip: (id: string) => void }) => {
+  const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const handleConnect = () => {
+    if (timeLeft === 0) {
+      setTimeLeft(15);
+    }
+  };
+
+  const isConnecting = timeLeft > 0;
+
+  return (
+    <Animated.View 
+      entering={FadeInDown.duration(500).delay(index * 50)} 
+      exiting={SlideOutLeft.duration(300)}
+      layout={LinearTransition.springify()}
+      style={styles.card}
+    >
+      <View style={styles.cardTopRow}>
+        <Avatar avatarId={item.avatarId} alias={item.alias} size={44} />
+        <View style={{ flex: 1, marginLeft: spacing.sm }}>
+          <Heading level={3} style={styles.alias}>{item.alias}</Heading>
+          <Text style={styles.cardMoodLabel}>{mood.label} {mood.emoji}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.vibeText}>"{item.vibe}"</Text>
+
+      <View style={styles.cardActions}>
+        <Pressable style={styles.skipBtn} onPress={() => onSkip(item.id)}>
+          <Text style={styles.skipBtnText}>Skip</Text>
+        </Pressable>
+        <Pressable 
+          onPress={handleConnect} 
+          style={[styles.connectBtn, isConnecting && styles.connectingBtn]}
+          disabled={isConnecting}
+        >
+          <Text style={styles.connectBtnText}>{isConnecting ? `Waiting... ${timeLeft}s` : 'Connect'}</Text>
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+};
+
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
@@ -314,7 +347,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: colors.white,
+    color: 'white',
     letterSpacing: 0.5,
   },
   listContent: {
@@ -387,7 +420,7 @@ const styles = StyleSheet.create({
   alias: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.white,
+    color: 'white',
   },
   cardMoodLabel: {
     fontSize: 13,
@@ -423,6 +456,9 @@ const styles = StyleSheet.create({
     backgroundColor: PINK_ACCENT,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  connectingBtn: {
+    backgroundColor: 'rgba(255, 45, 85, 0.4)',
   },
   connectBtnText: {
     color: 'white',
@@ -463,7 +499,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: colors.white,
+    color: 'white',
     textAlign: 'center',
     marginBottom: spacing.xs,
   },

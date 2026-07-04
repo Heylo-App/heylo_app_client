@@ -23,6 +23,7 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="my-moments" options={{ animation: 'slide_from_right' }} />
       {/* Commented out to prevent missing route warnings until these screens are created */}
       {/* <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="voice-room/[id]" options={{ animation: 'slide_from_bottom' }} />
