@@ -113,21 +113,21 @@ export default function HomeScreen() {
 
 
 
-          {/* ── Two‑up: Chats + Voice ──────────────────────── */}
+          {/* ── Two‑up: Moments + Rooms ──────────────────── */}
           <View style={styles.row}>
             <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.flex1}>
-              <Pressable style={styles.smallCard} onPress={() => alert('Messages coming soon!')}>
-                <FloatingIcon name="chatbubbles" color={PURPLE} delay={500} />
-                <Heading level={3} style={styles.cardTitle}>Chats</Heading>
-                <Text style={styles.cardSubtitle}>Your private convos</Text>
+              <Pressable style={styles.smallCard} onPress={() => router.push(Routes.app.moments)}>
+                <FloatingIcon name="albums" color={PURPLE} delay={500} />
+                <Heading level={3} style={styles.cardTitle}>Moments</Heading>
+                <Text style={styles.cardSubtitle}>Share your world</Text>
               </Pressable>
             </Animated.View>
 
             <Animated.View entering={FadeInDown.duration(500).delay(450)} style={styles.flex1}>
-              <Pressable style={styles.smallCard} onPress={() => alert('Voice Rooms coming soon!')}>
+              <Pressable style={styles.smallCard} onPress={() => router.push(Routes.app.rooms)}>
                 <FloatingIcon name="mic" color={BLUE} delay={1000} />
-                <Heading level={3} style={styles.cardTitle}>Voice</Heading>
-                <Text style={styles.cardSubtitle}>Drop-in audio rooms</Text>
+                <Heading level={3} style={styles.cardTitle}>Rooms</Heading>
+                <Text style={styles.cardSubtitle}>Join live rooms</Text>
               </Pressable>
             </Animated.View>
           </View>
