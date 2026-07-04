@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar, AVATAR_OPTIONS } from '@/components/ui/Avatar';
+import { MoodChip } from '@/components/ui/MoodChip';
+import { PulseDot } from '@/components/ui/PulseDot';
 import { useAuthStore } from '@/store/auth.store';
 import { Routes } from '@/constants/routes';
 import { spacing } from '@/theme/spacing';
@@ -51,33 +53,6 @@ const FloatingIcon = ({ name, color, delay, size = 24 }: { name: any; color: str
   );
 };
 
-// ── Pulse Dot ──────────────────────────────────────────────────
-const PulseDot = ({ color }: { color: string }) => {
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: 2 - scale.value, // fades as it scales
-  }));
-
-  return (
-    <View style={{ width: 8, height: 8, marginRight: spacing.sm }}>
-      <Animated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color }, animatedStyle]} />
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-    </View>
-  );
-};
 
 
 
@@ -105,7 +80,9 @@ export default function HomeScreen() {
               <Text style={styles.welcomeText}>Welcome back,</Text>
               <Heading level={1} style={styles.aliasText}>{user?.alias || 'Traveler'}</Heading>
             </View>
-            <Avatar avatarId={user?.avatarId || 'avatar-1'} alias={user?.alias} size={56} showOnline />
+            <Pressable onPress={() => router.push(Routes.app.about)}>
+              <Avatar avatarId={user?.avatarId || 'avatar-1'} alias={user?.alias} size={56} showOnline />
+            </Pressable>
           </Animated.View>
 
           {/* ── Active Status Pill ─────────────────────────── */}

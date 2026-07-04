@@ -23,12 +23,11 @@ export default function AppLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" />
-      {/* Commented out to prevent missing route warnings until these screens are created
-      <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} />
+      {/* Commented out to prevent missing route warnings until these screens are created */}
+      {/* <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} /> */}
       <Stack.Screen name="voice-room/[id]" options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="moderation" options={{ presentation: 'modal' }} />
-      */}
+      {/* <Stack.Screen name="settings" options={{ presentation: 'modal' }} /> */}
+      {/* <Stack.Screen name="moderation" options={{ presentation: 'modal' }} /> */}
     </Stack>
   );
 }

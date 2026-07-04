@@ -37,6 +37,7 @@ export const Button = memo(function Button({
   disabled,
   icon,
   onPress,
+  style,
   ...props
 }: ButtonProps) {
   const handlePress = useCallback(
@@ -78,12 +79,13 @@ export const Button = memo(function Button({
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.base,
         variantStyle,
         { height: sizeStyle.height, paddingHorizontal: sizeStyle.paddingHorizontal },
-        pressed && styles.pressed,
+        state.pressed && styles.pressed,
         isDisabled && styles.disabled,
+        typeof style === 'function' ? style(state) : style,
       ]}
       {...props}
     >

@@ -1,13 +1,17 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, View, Dimensions, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS, interpolate, withDelay } from 'react-native-reanimated';
+import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS, interpolate, withDelay, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 import { Text, Heading } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
+import { MoodChip } from '@/components/ui/MoodChip';
+import { MOOD_OPTIONS, MoodType } from '@/constants/moods';
 import { Routes } from '@/constants/routes';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
@@ -16,9 +20,16 @@ const { width } = Dimensions.get('window');
 
 export default function MatchingScreen() {
   const router = useRouter();
+  const [showMoodSelector, setShowMoodSelector] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<MoodType | 'any'>('any');
 
   const handleStartSearch = () => {
-    router.push({ pathname: Routes.app.findingMatch, params: { mood: 'any' } });
+    router.push({ pathname: Routes.app.findingMatch, params: { mood: selectedMood } });
+    setShowMoodSelector(false);
+  };
+
+  const handleShowMoodSelector = () => {
+    setShowMoodSelector(true);
   };
 
   // Slide button logic
@@ -40,7 +51,7 @@ export default function MatchingScreen() {
       if (translateX.value > SLIDE_DISTANCE * 0.8) {
         translateX.value = withTiming(SLIDE_DISTANCE, {}, (finished) => {
           if (finished) {
-            runOnJS(handleStartSearch)();
+            runOnJS(handleShowMoodSelector)();
             translateX.value = withDelay(400, withTiming(0, { duration: 300 }));
           }
         });
@@ -190,6 +201,50 @@ export default function MatchingScreen() {
               </GestureDetector>
             </View>
           </Animated.View>
+
+          {/* Mood Selector Overlay */}
+          {showMoodSelector && (
+            <Animated.View
+              entering={SlideInDown.duration(400).springify()}
+              exiting={SlideOutDown.duration(300)}
+              style={styles.blurOverlayWrapper}
+            >
+              <BlurView intensity={80} tint="dark" style={styles.blurOverlay}>
+                <Pressable style={styles.blurOverlayClose} onPress={() => setShowMoodSelector(false)} />
+                <View style={styles.moodSheet}>
+                  <View style={styles.sheetHandle} />
+                  <Heading level={2} style={styles.sheetTitle}>What's your vibe?</Heading>
+                  <Text style={styles.sheetSubtitle}>Choose the kind of connection you're looking for right now.</Text>
+                  
+                  <View style={styles.moodGrid}>
+                    <Pressable onPress={() => setSelectedMood('any')} style={[styles.anyMoodChip, selectedMood === 'any' && styles.anyMoodChipSelected]}>
+                      <Text style={[styles.anyMoodText, selectedMood === 'any' && styles.anyMoodTextSelected]}>✨ Surprise Me</Text>
+                    </Pressable>
+                    {MOOD_OPTIONS.map((mood) => (
+                      <MoodChip
+                        key={mood.id}
+                        mood={mood}
+                        selected={selectedMood === mood.id}
+                        onPress={(id) => setSelectedMood(id as MoodType)}
+                      />
+                    ))}
+                  </View>
+
+                  <Pressable onPress={handleStartSearch} style={styles.findMatchBtnContainer}>
+                    <LinearGradient
+                      colors={[PINK_ACCENT, '#E11D48']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.findMatchBtnGradient}
+                    >
+                      <Text style={styles.findMatchBtnText}>Find Match</Text>
+                      <Ionicons name="arrow-forward" size={20} color="white" />
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </BlurView>
+            </Animated.View>
+          )}
 
         </View>
       </SafeAreaView>
@@ -372,5 +427,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 1,
+  },
+  blurOverlayWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+  },
+  blurOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  blurOverlayClose: {
+    flex: 1,
+  },
+  moodSheet: {
+    backgroundColor: '#18181B',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: spacing.md,
+    paddingBottom: spacing['4xl'],
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.xl,
+  },
+  sheetTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: spacing['2xl'],
+    lineHeight: 20,
+  },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    justifyContent: 'center',
+    marginBottom: spacing['3xl'],
+  },
+  anyMoodChip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  anyMoodChipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  anyMoodText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+  anyMoodTextSelected: {
+    color: colors.white,
+    fontWeight: '700',
+  },
+  findMatchBtnContainer: {
+    width: '100%',
+    borderRadius: 30,
+    overflow: 'hidden',
+    shadowColor: PINK_ACCENT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  findMatchBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: spacing.sm,
+  },
+  findMatchBtnText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

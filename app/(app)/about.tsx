@@ -1,4 +1,5 @@
 import { StyleSheet, View, ScrollView, Pressable, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, Easing } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,6 +52,7 @@ const MenuRow = ({
 export default function AboutScreen() {
   const { user } = useAuthStore();
   const logout = useLogout();
+  const router = useRouter();
 
   if (!user) return null;
 
@@ -72,6 +74,11 @@ export default function AboutScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </Pressable>
+        </View>
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
           {/* ── Profile Header ──────────────────────────────── */}
@@ -248,9 +255,25 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: spacing['2xl'],
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xs,
     paddingBottom: 120,
     gap: spacing.md,
+  },
+  
+  // ── Top Bar ────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // ── Profile Header ───────────────────────────────────────

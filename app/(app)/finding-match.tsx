@@ -93,7 +93,9 @@ export default function FindingMatchScreen() {
           <View style={styles.textContainer}>
             <Heading level={2} style={styles.title}>Finding connection...</Heading>
             <Text style={styles.subtitle}>
-              Searching for someone with a matching vibe.
+              {mood && mood !== 'any' 
+                ? `Searching for someone with a ${mood} vibe.` 
+                : 'Searching for someone with a matching vibe.'}
             </Text>
           </View>
         </View>
