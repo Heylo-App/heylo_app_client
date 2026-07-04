@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, Pressable, Dimensions, FlatList } from 'react-native';
+import { StyleSheet, View, ScrollView, Pressable, Dimensions, FlatList, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, interpolateColor } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -132,19 +132,53 @@ export default function HomeScreen() {
             </Animated.View>
           </View>
 
-          {/* ── Daily Prompt ────────────────────────────────── */}
+          {/* ── Ask Me Anonymously Card ──────────────────────── */}
           <Animated.View entering={FadeInDown.duration(500).delay(500)}>
-            <Pressable style={styles.promptCard} onPress={() => alert('Answer prompt coming soon!')}>
-              <LinearGradient colors={['rgba(139,92,246,0.15)', 'rgba(59,130,246,0.08)']} style={StyleSheet.absoluteFillObject} />
-              <View style={styles.promptBadge}>
-                <Ionicons name="sparkles" size={16} color={AMBER} />
-                <Text style={styles.promptBadgeText}>Daily Prompt</Text>
+            <View style={styles.askCard}>
+              <LinearGradient
+                colors={['rgba(124,58,237,0.18)', 'rgba(59,130,246,0.10)']}
+                style={StyleSheet.absoluteFillObject}
+              />
+              {/* Top badge row */}
+              <View style={styles.askBadgeRow}>
+                <View style={styles.askBadge}>
+                  <Ionicons name="heart-outline" size={14} color={PURPLE} />
+                  <Text style={styles.askBadgeText}>Anonymous Feedback</Text>
+                </View>
+                <View style={styles.askLiveDot} />
               </View>
-              <Text style={styles.promptQuestion}>
-                "What's one thing you've never told anyone?"
+
+              {/* Headline */}
+              <Heading level={2} style={styles.askTitle}>How do your friends{`\n`}really feel about you? 💌</Heading>
+              <Text style={styles.askSubtitle}>
+                Share a link — friends leave honest, anonymous feedback about you. No names, just truth.
               </Text>
-              <Text style={styles.promptCta}>Tap to answer anonymously →</Text>
-            </Pressable>
+
+              {/* Preview feedback chips */}
+              <View style={styles.askPreviewRow}>
+                {['You make me smile 😊', 'You\'re so real', 'I miss talking to you'].map((q) => (
+                  <View key={q} style={styles.askPreviewChip}>
+                    <Text style={styles.askPreviewChipText}>{q}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* CTA */}
+              <Pressable
+                style={styles.askCta}
+                onPress={() =>
+                  Share.share({
+                    message: `Tell me anonymously how you feel about me 💌\nhttps://heylo.app/feedback/${user?.alias?.toLowerCase() || 'me'}`,
+                    title: 'Anonymous Feedback',
+                  })
+                }
+              >
+                <LinearGradient colors={[PURPLE, '#9333EA']} style={StyleSheet.absoluteFillObject} />
+                <Ionicons name="link" size={18} color="white" />
+                <Text style={styles.askCtaText}>Share My Feedback Link</Text>
+                <Ionicons name="share-social" size={16} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+            </View>
           </Animated.View>
 
           {/* ── Mood Streak ─────────────────────────────────── */}
@@ -426,39 +460,86 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ── Daily Prompt ─────────────────────────────────────────
-  promptCard: {
-    borderRadius: 24,
+  // ── Ask Me Anonymously Card ───────────────────────────────
+  askCard: {
+    borderRadius: 28,
     padding: spacing.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.2)',
+    borderColor: 'rgba(124,58,237,0.25)',
+    gap: spacing.md,
   },
-  promptBadge: {
+  askBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
+    justifyContent: 'space-between',
   },
-  promptBadgeText: {
+  askBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(124,58,237,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  askBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: AMBER,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  promptQuestion: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.white,
-    lineHeight: 30,
-    fontStyle: 'italic',
-    marginBottom: spacing.lg,
-  },
-  promptCta: {
-    fontSize: 14,
-    fontWeight: '600',
     color: PURPLE,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  askLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: EMERALD,
+  },
+  askTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: colors.white,
+    marginTop: 4,
+  },
+  askSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    lineHeight: 20,
+  },
+  askPreviewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 4,
+  },
+  askPreviewChip: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  askPreviewChipText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+  },
+  askCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  askCtaText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'white',
   },
 
   // ── Streak ───────────────────────────────────────────────

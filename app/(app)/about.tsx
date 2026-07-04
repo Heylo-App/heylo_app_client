@@ -98,6 +98,14 @@ export default function AboutScreen() {
             <Text style={styles.sectionLabel}>ACCOUNT</Text>
             <View style={styles.menuCard}>
               <MenuRow
+                icon="heart-outline"
+                iconColor={PINK}
+                label="Anonymous Feedbacks"
+                value="3 New"
+                onPress={() => router.push('/(app)/feedbacks')}
+              />
+              <View style={styles.menuDivider} />
+              <MenuRow
                 icon="person-outline"
                 iconColor={BLUE}
                 label="Username"
