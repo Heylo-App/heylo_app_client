@@ -12,8 +12,6 @@ import { useLogout } from '@/hooks/useAuth';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 const AMBER = '#F59E0B';
@@ -99,7 +97,7 @@ export default function AboutScreen() {
             <View style={styles.menuCard}>
               <MenuRow
                 icon="heart-outline"
-                iconColor={PINK}
+                iconColor={colors.primary}
                 label="Anonymous Feedbacks"
                 value="3 New"
                 onPress={() => router.push('/(app)/feedbacks')}
@@ -115,7 +113,7 @@ export default function AboutScreen() {
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="language-outline"
-                iconColor={PURPLE}
+                iconColor={colors.primary}
                 label="Language"
                 value={user.language || 'Any'}
                 onPress={() => alert('Language settings coming soon!')}
@@ -137,14 +135,14 @@ export default function AboutScreen() {
             <View style={styles.menuCard}>
               <MenuRow
                 icon="color-palette-outline"
-                iconColor={PINK}
+                iconColor={colors.primary}
                 label="Change Avatar"
                 onPress={() => alert('Avatar picker coming soon!')}
               />
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="moon-outline"
-                iconColor={PURPLE}
+                iconColor={colors.primary}
                 label="Appearance"
                 value="Dark"
                 onPress={() => alert('Appearance settings coming soon!')}
@@ -180,7 +178,7 @@ export default function AboutScreen() {
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="trash-outline"
-                iconColor={PINK}
+                iconColor={colors.primary}
                 label="Delete Account"
                 onPress={() => Alert.alert('Delete Account', 'This will permanently erase your data. This action cannot be undone.', [
                   { text: 'Cancel', style: 'cancel' },
@@ -210,7 +208,7 @@ export default function AboutScreen() {
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="share-social-outline"
-                iconColor={PURPLE}
+                iconColor={colors.primary}
                 label="Share Heylo"
                 onPress={() => alert('Share link coming soon!')}
               />
@@ -235,7 +233,7 @@ export default function AboutScreen() {
           {/* ── Logout Button ───────────────────────────────── */}
           <Animated.View entering={FadeInDown.duration(500).delay(550)}>
             <Pressable style={styles.logoutCard} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={22} color={PINK} />
+              <Ionicons name="log-out-outline" size={22} color={colors.primary} />
               <Text style={styles.logoutText}>End Session & Log Out</Text>
             </Pressable>
           </Animated.View>
@@ -292,7 +290,7 @@ const styles = StyleSheet.create({
     padding: 3,
     borderRadius: 45,
     borderWidth: 2,
-    borderColor: PINK,
+    borderColor: colors.primary,
     marginBottom: spacing.sm,
   },
   aliasText: {
@@ -355,7 +353,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   menuLabelDanger: {
-    color: PINK,
+    color: colors.primary,
   },
   menuRight: {
     flexDirection: 'row',
@@ -389,7 +387,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '700',
-    color: PINK,
+    color: colors.primary,
   },
 
   // ── Footer ───────────────────────────────────────────────

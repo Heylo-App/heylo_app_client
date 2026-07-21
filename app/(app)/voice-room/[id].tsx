@@ -13,7 +13,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 
-const PURPLE = '#7C3AED';
 const RED = '#EF4444';
 
 interface ChatMessage {
@@ -135,7 +134,7 @@ export default function VoiceRoomScreen() {
             <Ionicons name="close" size={28} color="white" />
           </Pressable>
           <Animated.View style={[styles.pulseCircle, animatedPulseStyle]}>
-            <Ionicons name="lock-closed" size={48} color={PURPLE} />
+            <Ionicons name="lock-closed" size={48} color={colors.primary} />
           </Animated.View>
           <Text style={styles.waitingTitle}>Waiting for Admin</Text>
           <Text style={styles.waitingSubtitle}>The host has been notified you want to join.</Text>
@@ -251,7 +250,7 @@ export default function VoiceRoomScreen() {
                 onPress={handleSendMessage}
                 disabled={!chatMessage.trim()}
               >
-                <Ionicons name="send" size={18} color={PURPLE} />
+                <Ionicons name="send" size={18} color={colors.primary} />
               </Pressable>
             </View>
           </Animated.View>
@@ -342,7 +341,7 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: '800', color: colors.white,
   },
   headerSubtitle: {
-    fontSize: 13, color: PURPLE, fontWeight: '600', marginTop: 2,
+    fontSize: 13, color: colors.primary, fontWeight: '600', marginTop: 2,
   },
   leaveHeaderButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
@@ -397,12 +396,12 @@ const styles = StyleSheet.create({
     borderColor: '#18181B',
   },
   speakingRingCompact: {
-    borderColor: PURPLE,
+    borderColor: colors.primary,
   },
   hostBadgeCompact: {
     position: 'absolute',
     bottom: -3, right: -3,
-    backgroundColor: PURPLE,
+    backgroundColor: colors.primary,
     borderRadius: 7,
     width: 14, height: 14,
     alignItems: 'center', justifyContent: 'center',
@@ -461,7 +460,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   chatBubbleMe: {
-    backgroundColor: PURPLE,
+    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
   },
   chatMessageHeader: {
@@ -495,8 +494,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   micButtonActive: {
-    backgroundColor: PURPLE,
-    borderColor: PURPLE,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   inputContainer: {
     flex: 1,
@@ -566,7 +565,7 @@ const styles = StyleSheet.create({
   avatarHostRing: {
     borderRadius: 26,
     borderWidth: 2,
-    borderColor: PURPLE,
+    borderColor: colors.primary,
     padding: 2,
   },
   memberListInfo: {
@@ -585,7 +584,7 @@ const styles = StyleSheet.create({
   hostBadgeList: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PURPLE,
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,

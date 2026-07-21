@@ -12,8 +12,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
 const { width } = Dimensions.get('window');
-const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 
@@ -77,8 +75,8 @@ export default function WelcomeScreen() {
               </Animated.View>
 
               {/* Floating badges */}
-              <FloatingBadge icon="heart" color={PINK} style={{ top: '5%', right: '25%' }} delay={0} />
-              <FloatingBadge icon="chatbubble-ellipses" color={PURPLE} style={{ bottom: '20%', left: '5%' }} delay={500} />
+              <FloatingBadge icon="heart" color={colors.primary} style={{ top: '5%', right: '25%' }} delay={0} />
+              <FloatingBadge icon="chatbubble-ellipses" color={colors.primary} style={{ bottom: '20%', left: '5%' }} delay={500} />
               <FloatingBadge icon="shield-checkmark" color={EMERALD} style={{ bottom: '10%', right: '10%' }} delay={1000} />
             </View>
 
@@ -95,11 +93,11 @@ export default function WelcomeScreen() {
             {/* Feature pills */}
             <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.featurePills}>
               <View style={styles.pill}>
-                <Ionicons name="eye-off" size={14} color={PURPLE} />
+                <Ionicons name="eye-off" size={14} color={colors.primary} />
                 <Text style={styles.pillText}>100% Anonymous</Text>
               </View>
               <View style={styles.pill}>
-                <Ionicons name="flash" size={14} color={PINK} />
+                <Ionicons name="flash" size={14} color={colors.primary} />
                 <Text style={styles.pillText}>Instant Matching</Text>
               </View>
             </Animated.View>
@@ -108,7 +106,7 @@ export default function WelcomeScreen() {
           {/* ── Bottom Actions ──────────────────────────────── */}
           <Animated.View entering={FadeInDown.duration(500).delay(600)} style={styles.actions}>
             <Pressable style={styles.primaryBtn} onPress={() => router.push(Routes.auth.register)}>
-              <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+              <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
               <Ionicons name="heart-outline" size={20} color="white" />
               <Text style={styles.primaryBtnText}>Create Account</Text>
             </Pressable>
@@ -147,7 +145,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 28,
     fontWeight: '800',
-    color: PINK,
+    color: colors.primary,
     letterSpacing: -1,
   },
   illustrationArea: {
@@ -250,7 +248,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   linkText: {
-    color: PINK,
+    color: colors.primary,
     fontWeight: '700',
   },
   tos: {

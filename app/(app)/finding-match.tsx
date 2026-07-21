@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: 'rgba(255, 45, 85, 0.4)', // Pink tint matching the new PINK_ACCENT
+    backgroundColor: 'rgba(255, 45, 85, 0.4)', // Pink tint matching the new colors.primary
     zIndex: 1,
   },
   textContainer: {

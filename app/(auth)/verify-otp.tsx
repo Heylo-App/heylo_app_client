@@ -14,7 +14,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { getApiErrorMessage } from '@/api/client';
 
-const PINK = '#FF2D55';
 
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -62,7 +61,7 @@ export default function VerifyOtpScreen() {
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
               <View style={styles.iconCircle}>
-                <Ionicons name="shield-checkmark-outline" size={28} color={PINK} />
+                <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
               </View>
               <Heading level={1} style={styles.title}>Secure Verification</Heading>
               <Text style={styles.subtitle}>
@@ -93,7 +92,7 @@ export default function VerifyOtpScreen() {
 
               {verifyOtp.isError ? (
                 <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color={PINK} />
+                  <Ionicons name="alert-circle" size={16} color={colors.primary} />
                   <Text style={styles.errorText}>{getApiErrorMessage(verifyOtp.error)}</Text>
                 </View>
               ) : null}
@@ -107,7 +106,7 @@ export default function VerifyOtpScreen() {
             {/* Footer */}
             <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.footer}>
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
                 {verifyOtp.isPending ? (
                   <Text style={styles.submitBtnText}>Verifying...</Text>
                 ) : (
@@ -161,7 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   stepDotActive: {
-    backgroundColor: PINK,
+    backgroundColor: colors.primary,
     width: 32,
   },
   scrollContent: {
@@ -202,7 +201,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     letterSpacing: 8,
     fontWeight: '700',
-    color: PINK,
+    color: colors.primary,
   },
   errorBox: {
     flexDirection: 'row',
@@ -216,7 +215,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,45,85,0.15)',
   },
   errorText: {
-    color: PINK,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
@@ -259,7 +258,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   linkText: {
-    color: PINK,
+    color: colors.primary,
     fontWeight: '700',
   },
 });

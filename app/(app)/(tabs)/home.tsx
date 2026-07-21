@@ -13,7 +13,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 
-const PINK = '#FF2D55';
 const SHEET_BG = '#111115';
 const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -159,10 +158,10 @@ const MomentItem = ({ item, onLike, onComment, onRepost, onShare }: {
             <Ionicons 
               name={item.isLiked ? "heart" : "heart-outline"} 
               size={20} 
-              color={item.isLiked ? PINK : "rgba(255,255,255,0.5)"} 
+              color={item.isLiked ? colors.primary : "rgba(255,255,255,0.5)"} 
             />
           </Animated.View>
-          <Text style={[styles.actionText, item.isLiked && { color: PINK }]}>
+          <Text style={[styles.actionText, item.isLiked && { color: colors.primary }]}>
             {item.likes}
           </Text>
         </Pressable>
@@ -347,7 +346,7 @@ export default function HomeScreen() {
         {/* FAB */}
         <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.fabContainer}>
           <Pressable style={styles.fab} onPress={() => setShowCreate(true)}>
-            <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
             <Ionicons name="add" size={32} color="white" />
           </Pressable>
         </Animated.View>
@@ -387,7 +386,7 @@ export default function HomeScreen() {
                       disabled={!newContent.trim()}
                     >
                       <LinearGradient
-                        colors={newContent.trim() ? [PINK, '#E11D48'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
+                        colors={newContent.trim() ? colors.primaryGradient : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
                         style={StyleSheet.absoluteFillObject}
                       />
                       <Text style={styles.postBtnText}>Post</Text>
@@ -456,7 +455,7 @@ export default function HomeScreen() {
                       disabled={!commentText.trim()}
                       style={[styles.commentSendBtn, !commentText.trim() && { opacity: 0.3 }]}
                     >
-                      <Ionicons name="send" size={20} color={PINK} />
+                      <Ionicons name="send" size={20} color={colors.primary} />
                     </Pressable>
                   </View>
                 </Animated.View>
@@ -567,7 +566,7 @@ const styles = StyleSheet.create({
   fab: {
     width: 60, height: 60, borderRadius: 30,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    shadowColor: PINK, shadowOffset: { width: 0, height: 4 },
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
   },
 

@@ -21,8 +21,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthSession } from '@/hooks/useAuth';
 
-const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
 
 interface Message {
   id: string;
@@ -122,7 +120,7 @@ export default function ChatScreen() {
           <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}>
             {isMe && (
               <LinearGradient 
-                colors={[PINK, '#E11D48']} 
+                colors={colors.primaryGradient} 
                 style={StyleSheet.absoluteFillObject} 
                 start={{ x: 0, y: 0 }} 
                 end={{ x: 1, y: 1 }} 
@@ -209,7 +207,7 @@ export default function ChatScreen() {
               >
                 {inputText.trim() ? (
                   <LinearGradient 
-                    colors={[PINK, '#E11D48']} 
+                    colors={colors.primaryGradient} 
                     style={StyleSheet.absoluteFillObject} 
                     start={{ x: 0, y: 0 }} 
                     end={{ x: 1, y: 1 }} 
@@ -278,7 +276,7 @@ const styles = StyleSheet.create({
   },
   headerMood: {
     fontSize: 13,
-    color: PINK,
+    color: colors.primary,
     fontWeight: '600',
   },
 
@@ -314,7 +312,7 @@ const styles = StyleSheet.create({
   },
   messageBubbleMe: {
     borderBottomRightRadius: 4,
-    backgroundColor: PINK, // fallback if gradient fails
+    backgroundColor: colors.primary, // fallback if gradient fails
   },
   messageBubbleThem: {
     borderBottomLeftRadius: 4,
@@ -382,7 +380,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   sendBtnActiveWrapper: {
-    shadowColor: PINK,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,

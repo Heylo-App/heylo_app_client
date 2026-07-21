@@ -11,8 +11,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 
@@ -185,7 +183,7 @@ export default function HistoryScreen() {
           {/* Unread badge */}
           {item.unread > 0 && (
             <View style={styles.unreadBadge}>
-              <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
               <Text style={styles.unreadText}>{item.unread}</Text>
             </View>
           )}
@@ -213,7 +211,7 @@ export default function HistoryScreen() {
       {/* Compact Stats Row */}
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.compactStatsRow}>
         <View style={styles.compactStat}>
-          <Ionicons name="people" size={16} color={PINK} />
+          <Ionicons name="people" size={16} color={colors.primary} />
           <Text style={styles.compactStatText}><Text style={styles.compactStatValue}>{totalMatches}</Text> Matches</Text>
         </View>
         <View style={styles.compactStatDivider} />
@@ -413,7 +411,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chatTimeActive: {
-    color: PINK,
+    color: colors.primary,
     fontWeight: '600',
   },
   chatBottomRow: {

@@ -10,19 +10,17 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 
-const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 const AMBER = '#F59E0B';
 
 const MOCK_FEEDBACKS = [
-  { id: '1', text: "You make me smile 😊", time: "2h ago", color: PINK },
-  { id: '2', text: "You're so real", time: "5h ago", color: PURPLE },
+  { id: '1', text: "You make me smile 😊", time: "2h ago", color: colors.primary },
+  { id: '2', text: "You're so real", time: "5h ago", color: colors.primary },
   { id: '3', text: "I miss talking to you", time: "1d ago", color: BLUE },
   { id: '4', text: "Best vibes always ✨", time: "2d ago", color: EMERALD },
   { id: '5', text: "You always know how to make people feel heard.", time: "3d ago", color: AMBER },
-  { id: '6', text: "Such a great friend!", time: "1w ago", color: PINK },
+  { id: '6', text: "Such a great friend!", time: "1w ago", color: colors.primary },
 ];
 
 export default function FeedbacksScreen() {
@@ -54,7 +52,7 @@ export default function FeedbacksScreen() {
               {/* Top badge row */}
               <View style={styles.askBadgeRow}>
                 <View style={styles.askBadge}>
-                  <Ionicons name="heart-outline" size={14} color={PURPLE} />
+                  <Ionicons name="heart-outline" size={14} color={colors.primary} />
                   <Text style={styles.askBadgeText}>Anonymous Feedback</Text>
                 </View>
                 <View style={styles.askLiveDot} />
@@ -85,7 +83,7 @@ export default function FeedbacksScreen() {
                   })
                 }
               >
-                <LinearGradient colors={[PURPLE, '#9333EA']} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
                 <Ionicons name="link" size={18} color="white" />
                 <Text style={styles.askCtaText}>Share My Feedback Link</Text>
                 <Ionicons name="share-social" size={16} color="rgba(255,255,255,0.7)" />
@@ -94,7 +92,7 @@ export default function FeedbacksScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.duration(400).delay(150)} style={styles.infoBanner}>
-            <Ionicons name="heart-outline" size={24} color={PINK} />
+            <Ionicons name="heart-outline" size={24} color={colors.primary} />
             <Text style={styles.infoText}>These are honest, anonymous messages from your friends. They cannot be traced back.</Text>
           </Animated.View>
 
@@ -177,7 +175,7 @@ const styles = StyleSheet.create({
   askBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: PURPLE,
+    color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

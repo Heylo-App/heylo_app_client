@@ -17,7 +17,6 @@ import { useAuthStore } from '@/store/auth.store';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
-const PINK_ACCENT = '#FF2D55';
 const { height } = Dimensions.get('window');
 
 const MOCK_PROFILES = [
@@ -88,7 +87,7 @@ export default function ExploreScreen() {
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Heading level={3} style={styles.alias}>{user?.alias || 'Me'}</Heading>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                <PulseDot color={PINK_ACCENT} />
+                <PulseDot color={colors.primary} />
                 <Text style={styles.dashStatusText}>Active & Visible</Text>
               </View>
             </View>
@@ -98,7 +97,7 @@ export default function ExploreScreen() {
 
           <Pressable onPress={() => setShowRequests(true)} style={styles.dashRequestsBtn}>
             <LinearGradient
-              colors={[PINK_ACCENT, '#E11D48']}
+              colors={colors.primaryGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.dashRequestsGradient}
@@ -137,7 +136,7 @@ export default function ExploreScreen() {
                 <Switch
                   value={isActive}
                   onValueChange={handleToggleActive}
-                  trackColor={{ false: 'rgba(255,255,255,0.2)', true: PINK_ACCENT }}
+                  trackColor={{ false: 'rgba(255,255,255,0.2)', true: colors.primary }}
                   thumbColor={'white'}
                   ios_backgroundColor="rgba(255,255,255,0.2)"
                   style={{ transform: [{ scale: 0.75 }] }}
@@ -370,7 +369,7 @@ const styles = StyleSheet.create({
   dashStatusText: {
     fontSize: 12,
     fontWeight: '700',
-    color: PINK_ACCENT,
+    color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -399,7 +398,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   dashRequestsBadgeText: {
-    color: PINK_ACCENT,
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -453,7 +452,7 @@ const styles = StyleSheet.create({
   connectBtn: {
     flex: 1,
     paddingVertical: 11,
-    backgroundColor: PINK_ACCENT,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     alignItems: 'center',
   },
@@ -572,7 +571,7 @@ const styles = StyleSheet.create({
   reqBtnAccept: {
     flex: 1,
     paddingVertical: 10,
-    backgroundColor: PINK_ACCENT,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     alignItems: 'center',
   },

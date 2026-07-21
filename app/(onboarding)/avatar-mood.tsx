@@ -13,7 +13,6 @@ import { useOnboardingStore } from '@/store/onboarding.store';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
-const PINK = '#FF2D55';
 const BLUE = '#3B82F6';
 
 export default function AvatarMoodScreen() {
@@ -110,7 +109,7 @@ export default function AvatarMoodScreen() {
               disabled={!mood || completeOnboarding.isPending}
             >
               {mood ? (
-                <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
               ) : null}
               {completeOnboarding.isPending ? (
                 <Text style={styles.submitBtnText}>Setting up...</Text>
@@ -151,7 +150,7 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
   },
   stepDotActive: {
-    backgroundColor: PINK,
+    backgroundColor: colors.primary,
     width: 32,
   },
   scrollContent: {
@@ -211,13 +210,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarSelected: {
-    borderColor: PINK,
+    borderColor: colors.primary,
   },
   avatarCheck: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: PINK,
+    backgroundColor: colors.primary,
     width: 24,
     height: 24,
     borderRadius: 12,

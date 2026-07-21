@@ -15,7 +15,6 @@ import { useAuthStore } from '@/store/auth.store';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const PINK = '#FF2D55';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -157,7 +156,7 @@ export default function RegisterScreen() {
               </Text>
 
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
                 <>
                   <Text style={styles.submitBtnText}>Continue</Text>
                   <Ionicons name="arrow-forward" size={20} color="white" />
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   stepDotActive: {
-    backgroundColor: PINK,
+    backgroundColor: colors.primary,
     width: 32,
   },
   scrollContent: {
@@ -254,7 +253,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,45,85,0.15)',
   },
   errorText: {
-    color: PINK,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   linkText: {
-    color: PINK,
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 13,
   },

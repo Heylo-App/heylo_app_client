@@ -15,7 +15,6 @@ import { useOnboardingStore } from '@/store/onboarding.store';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const PINK = '#FF2D55';
 const BLUE = '#3B82F6';
 
 export default function ProfileDetailsScreen() {

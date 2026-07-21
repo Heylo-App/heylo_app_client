@@ -232,7 +232,7 @@ export default function MatchingScreen() {
 
                   <Pressable onPress={handleStartSearch} style={styles.findMatchBtnContainer}>
                     <LinearGradient
-                      colors={[PINK_ACCENT, '#E11D48']}
+                      colors={colors.primaryGradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.findMatchBtnGradient}
@@ -252,7 +252,6 @@ export default function MatchingScreen() {
   );
 }
 
-const PINK_ACCENT = '#FF2D55';
 const CARD_WIDTH = width * 0.45;
 const CARD_HEIGHT = CARD_WIDTH * 1.3;
 
@@ -353,7 +352,7 @@ const styles = StyleSheet.create({
   badgeTop: {
     top: '10%',
     right: '35%',
-    backgroundColor: PINK_ACCENT,
+    backgroundColor: colors.primary,
   },
   badgeLeft: {
     bottom: '25%',
@@ -377,7 +376,7 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
   highlightText: {
-    color: PINK_ACCENT,
+    color: colors.primary,
   },
   subtitleText: {
     marginTop: spacing.xl,
@@ -408,7 +407,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: PINK_ACCENT,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -505,7 +504,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 30,
     overflow: 'hidden',
-    shadowColor: PINK_ACCENT,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

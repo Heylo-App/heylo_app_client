@@ -12,7 +12,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 
-const PINK = '#FF2D55';
 
 interface MyMoment {
   id: string;
@@ -105,10 +104,10 @@ const MyMomentCard = ({ item, myName, myAvatar, onLike }: {
             <Ionicons
               name={item.isLiked ? 'heart' : 'heart-outline'}
               size={18}
-              color={item.isLiked ? PINK : 'rgba(255,255,255,0.45)'}
+              color={item.isLiked ? colors.primary : 'rgba(255,255,255,0.45)'}
             />
           </Animated.View>
-          <Text style={[styles.actionCount, item.isLiked && { color: PINK }]}>{item.likes}</Text>
+          <Text style={[styles.actionCount, item.isLiked && { color: colors.primary }]}>{item.likes}</Text>
         </Pressable>
 
         <View style={styles.actionBtn}>

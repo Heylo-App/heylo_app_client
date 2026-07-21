@@ -13,7 +13,6 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 
-const PURPLE = '#7C3AED';
 
 interface VoiceRoom {
   id: string;
@@ -200,7 +199,7 @@ export default function RoomsScreen() {
         {/* FAB */}
         <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.fabContainer}>
           <Pressable style={styles.fab} onPress={handlePressFab}>
-            <LinearGradient colors={[PURPLE, '#9333EA']} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
             <Ionicons name="add" size={32} color="white" />
           </Pressable>
         </Animated.View>
@@ -259,7 +258,7 @@ export default function RoomsScreen() {
                     disabled={!newRoomTitle.trim()}
                   >
                     <LinearGradient
-                      colors={newRoomTitle.trim() ? [PURPLE, '#9333EA'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
+                      colors={newRoomTitle.trim() ? colors.primaryGradient : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
                       style={StyleSheet.absoluteFillObject}
                     />
                     <Text style={styles.createBtnText}>Start Room</Text>
@@ -388,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: PURPLE,
+    borderColor: colors.primary,
   },
   joinButtonText: {
     color: '#A78BFA',
@@ -411,7 +410,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: PURPLE,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
