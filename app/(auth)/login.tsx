@@ -11,16 +11,15 @@ import { Input } from '@/components/ui/Input';
 import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
 import { loginSchema, type LoginFormData } from '@/features/auth/validation';
-import { useSendOtp } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/auth.store';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
-import { getApiErrorMessage } from '@/api/client';
 
 const PINK = '#FF2D55';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const sendOtp = useSendOtp();
+  const setUser = useAuthStore((s) => s.setUser);
 
   const {
     control,
@@ -31,13 +30,19 @@ export default function LoginScreen() {
     defaultValues: { identifier: '', password: '' },
   });
 
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      await sendOtp.mutateAsync({ email: data.identifier, password: data.password } as any);
-      router.push({ pathname: Routes.auth.verifyOtp, params: { email: data.identifier } });
-    } catch (error) {
-      console.error(getApiErrorMessage(error));
-    }
+  const onSubmit = handleSubmit((data) => {
+    // Demo mode: mock user as already onboarded, no API call
+    setUser({
+      id: 'demo-user-' + Date.now(),
+      alias: data.identifier.split('@')[0],
+      avatarId: 'avatar_1',
+      mood: 'chill',
+      needs: [],
+      reputation: 0,
+      createdAt: new Date().toISOString(),
+      isOnboarded: true,
+    });
+    router.replace(Routes.app.home);
   });
 
   return (
@@ -106,12 +111,7 @@ export default function LoginScreen() {
                 )}
               />
 
-              {sendOtp.isError ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color={PINK} />
-                  <Text style={styles.errorText}>{getApiErrorMessage(sendOtp.error)}</Text>
-                </View>
-              ) : null}
+              {/* No error box needed in demo mode */}
             </Animated.View>
 
             {/* Footer */}
@@ -123,14 +123,10 @@ export default function LoginScreen() {
 
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
                 <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                {sendOtp.isPending ? (
-                  <Text style={styles.submitBtnText}>Signing in...</Text>
-                ) : (
-                  <>
-                    <Text style={styles.submitBtnText}>Log In</Text>
-                    <Ionicons name="arrow-forward" size={20} color="white" />
-                  </>
-                )}
+                <>
+                  <Text style={styles.submitBtnText}>Log In</Text>
+                  <Ionicons name="arrow-forward" size={20} color="white" />
+                </>
               </Pressable>
 
               <Pressable onPress={() => router.push(Routes.auth.register)}>

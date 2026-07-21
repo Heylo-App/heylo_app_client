@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, ScrollView, Pressable, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Heading } from '@/components/ui/Text';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { useAuthStore } from '@/store/auth.store';
 
 const PINK = '#FF2D55';
 const PURPLE = '#7C3AED';
@@ -26,6 +27,7 @@ const MOCK_FEEDBACKS = [
 
 export default function FeedbacksScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
 
   return (
     <View style={styles.mainContainer}>
@@ -42,10 +44,61 @@ export default function FeedbacksScreen() {
         </Animated.View>
 
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.infoBanner}>
+          {/* ── Ask Me Anonymously Card ──────────────────────── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+            <View style={styles.askCard}>
+              <LinearGradient
+                colors={['rgba(124,58,237,0.18)', 'rgba(59,130,246,0.10)']}
+                style={StyleSheet.absoluteFillObject}
+              />
+              {/* Top badge row */}
+              <View style={styles.askBadgeRow}>
+                <View style={styles.askBadge}>
+                  <Ionicons name="heart-outline" size={14} color={PURPLE} />
+                  <Text style={styles.askBadgeText}>Anonymous Feedback</Text>
+                </View>
+                <View style={styles.askLiveDot} />
+              </View>
+
+              {/* Headline */}
+              <Heading level={2} style={styles.askTitle}>How do your friends{`\n`}really feel about you? 💌</Heading>
+              <Text style={styles.askSubtitle}>
+                Share a link — friends leave honest, anonymous feedback about you. No names, just truth.
+              </Text>
+
+              {/* Preview feedback chips */}
+              <View style={styles.askPreviewRow}>
+                {['You make me smile 😊', 'You\'re so real', 'I miss talking to you'].map((q) => (
+                  <View key={q} style={styles.askPreviewChip}>
+                    <Text style={styles.askPreviewChipText}>{q}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* CTA */}
+              <Pressable
+                style={styles.askCta}
+                onPress={() =>
+                  Share.share({
+                    message: `Tell me anonymously how you feel about me 💌\nhttps://heylo.app/feedback/${user?.alias?.toLowerCase() || 'me'}`,
+                    title: 'Anonymous Feedback',
+                  })
+                }
+              >
+                <LinearGradient colors={[PURPLE, '#9333EA']} style={StyleSheet.absoluteFillObject} />
+                <Ionicons name="link" size={18} color="white" />
+                <Text style={styles.askCtaText}>Share My Feedback Link</Text>
+                <Ionicons name="share-social" size={16} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+            </View>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(400).delay(150)} style={styles.infoBanner}>
             <Ionicons name="heart-outline" size={24} color={PINK} />
             <Text style={styles.infoText}>These are honest, anonymous messages from your friends. They cannot be traced back.</Text>
           </Animated.View>
+
+          <Text style={styles.sectionTitle}>Received Feedback</Text>
 
           <View style={styles.feedbacksList}>
             {MOCK_FEEDBACKS.map((fb, index) => (
@@ -97,16 +150,106 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
+  // ── Ask Me Anonymously Card ───────────────────────────────
+  askCard: {
+    borderRadius: 28,
+    padding: spacing.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.25)',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  askBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  askBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(124,58,237,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  askBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PURPLE,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  askLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: EMERALD,
+  },
+  askTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: colors.white,
+    marginTop: 4,
+  },
+  askSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    lineHeight: 20,
+  },
+  askPreviewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 4,
+  },
+  askPreviewChip: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  askPreviewChipText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+  },
+  askCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  askCtaText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'white',
+  },
+
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,45,85,0.1)',
     borderRadius: 16,
     padding: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     gap: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(255,45,85,0.2)',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: spacing.md,
+    marginLeft: spacing.xs,
   },
   infoText: {
     flex: 1,

@@ -16,9 +16,8 @@ export const Routes = {
     matching: '/(app)/(tabs)/matching',
     findingMatch: '/(app)/finding-match',
     chat: '/(app)/chat/[id]',
-    about: '/(app)/about',
+    profile: '/(app)/(tabs)/profile',
     explore: '/(app)/(tabs)/explore',
-    moments: '/(app)/(tabs)/moments',
     rooms: '/(app)/(tabs)/rooms',
   },
 } as const;

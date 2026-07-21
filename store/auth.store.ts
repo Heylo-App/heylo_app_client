@@ -37,31 +37,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: async () => {
-    set({ isLoading: true });
-    try {
-      const { secureStorage } = await import('@/utils/storage');
-      const { authService } = await import('@/services/auth.service');
-
-      const onboarded = await persistentStorage.getBoolean(StorageKeys.onboardingComplete);
-      const token = await secureStorage.getToken();
-
-      if (token) {
-        try {
-          const user = await authService.getMe();
-          set({
-            user,
-            isAuthenticated: true,
-            isOnboarded: onboarded || user.isOnboarded,
-          });
-        } catch {
-          await secureStorage.clearTokens();
-        }
-      } else {
-        set({ isOnboarded: onboarded });
-      }
-    } finally {
-      set({ isLoading: false });
-    }
+    // Demo mode: no backend, just clear the loading state
+    set({ isLoading: false });
   },
 
   reset: () =>

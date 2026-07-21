@@ -1,794 +1,687 @@
-import { useEffect, useRef } from 'react';
-import { StyleSheet, View, ScrollView, Pressable, Dimensions, FlatList, Share } from 'react-native';
+import { useState, useRef } from 'react';
+import { StyleSheet, View, FlatList, Pressable, TextInput, Share, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, interpolateColor } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import Animated, { FadeIn, FadeInDown, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withSequence } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
 
 import { Text, Heading } from '@/components/ui/Text';
-import { Avatar, AVATAR_OPTIONS } from '@/components/ui/Avatar';
-import { MoodChip } from '@/components/ui/MoodChip';
-import { PulseDot } from '@/components/ui/PulseDot';
-import { useAuthStore } from '@/store/auth.store';
-import { Routes } from '@/constants/routes';
+import { Avatar } from '@/components/ui/Avatar';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { useAuthStore } from '@/store/auth.store';
 
-const { width } = Dimensions.get('window');
 const PINK = '#FF2D55';
-const PURPLE = '#7C3AED';
-const BLUE = '#3B82F6';
-const EMERALD = '#10B981';
-const AMBER = '#F59E0B';
-const CYAN = '#06B6D4';
+const SHEET_BG = '#111115';
+const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ── Floating Icon ──────────────────────────────────────────────
-const FloatingIcon = ({ name, color, delay, size = 24 }: { name: any; color: string; delay: number; size?: number }) => {
-  const translateY = useSharedValue(0);
+// ─── Types ──────────────────────────────────────────────
+interface Comment {
+  id: string;
+  author: string;
+  avatarId: string;
+  text: string;
+  timestamp: string;
+}
 
-  useEffect(() => {
-    translateY.value = withRepeat(
-      withSequence(
-        withTiming(-6, { duration: 2000 + delay, easing: Easing.inOut(Easing.ease) }),
-        withTiming(6, { duration: 2000 + delay, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2000 + delay, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
+interface Moment {
+  id: string;
+  author: {
+    name: string;
+    handle: string;
+    avatarId: string;
+  };
+  content: string;
+  timestamp: string;
+  likes: number;
+  comments: Comment[];
+  reposts: number;
+  isLiked: boolean;
+  isReposted: boolean;
+  isMine: boolean;
+  originalAuthor?: {
+    name: string;
+    handle: string;
+    avatarId: string;
+  };
+}
+
+// ─── Mock Data ──────────────────────────────────────────
+const INITIAL_MOMENTS: Moment[] = [
+  {
+    id: '1',
+    author: { name: 'Sarah Jenkins', handle: '@sarahj', avatarId: 'avatar-1' },
+    content: 'Just had the best coffee at the new place downtown! ☕️ Anyone else been there yet?',
+    timestamp: '2h ago',
+    likes: 24, comments: [
+      { id: 'c1', author: 'Mike', avatarId: 'avatar-2', text: 'Which place? I need to try it!', timestamp: '1h ago' },
+    ], reposts: 2, isLiked: false, isReposted: false, isMine: false,
+  },
+  {
+    id: '2',
+    author: { name: 'Mike Ross', handle: '@mikeross', avatarId: 'avatar-2' },
+    content: 'Learning React Native Reanimated. The learning curve is real but the results are so worth it. 🚀',
+    timestamp: '4h ago',
+    likes: 112, comments: [
+      { id: 'c2', author: 'Elena', avatarId: 'avatar-3', text: 'So true! Check out William Candillon\'s channel.', timestamp: '3h ago' },
+      { id: 'c3', author: 'David', avatarId: 'avatar-4', text: 'Stick with it! Gets easier.', timestamp: '2h ago' },
+    ], reposts: 12, isLiked: true, isReposted: false, isMine: false,
+  },
+  {
+    id: '3',
+    author: { name: 'Elena Gilbert', handle: '@elenag', avatarId: 'avatar-3' },
+    content: 'Looking for podcast recommendations! I love true crime and tech. Drop your favorites below 👇',
+    timestamp: '5h ago',
+    likes: 45, comments: [], reposts: 0, isLiked: false, isReposted: false, isMine: false,
+  },
+  {
+    id: '4',
+    author: { name: 'David Kim', handle: '@dkim', avatarId: 'avatar-4' },
+    content: 'What a beautiful sunset tonight! Sometimes you just have to stop and appreciate the little things.',
+    timestamp: '1d ago',
+    likes: 89, comments: [], reposts: 5, isLiked: false, isReposted: false, isMine: false,
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+// MomentItem Component
+// ═══════════════════════════════════════════════════════
+const MomentItem = ({ item, onLike, onComment, onRepost, onShare }: {
+  item: Moment;
+  onLike: () => void;
+  onComment: () => void;
+  onRepost: () => void;
+  onShare: () => void;
+}) => {
+  const scale = useSharedValue(1);
+
+  const handleLike = () => {
+    scale.value = withSequence(
+      withSpring(1.3, { damping: 2, stiffness: 150 }),
+      withSpring(1)
     );
-  }, []);
+    onLike();
+  };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+  const heartStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }]
   }));
 
   return (
-    <Animated.View style={[styles.floatingIconContainer, animatedStyle]}>
-      <View style={[styles.iconGlow, { backgroundColor: color }]} />
-      <View style={[styles.iconSolid, { backgroundColor: color }]}>
-        <Ionicons name={name} size={size} color="white" />
+    <View style={styles.momentCard}>
+      {/* Repost credit banner */}
+      {item.originalAuthor && (
+        <View style={styles.repostCreditRow}>
+          <Ionicons name="repeat" size={14} color="#10B981" />
+          <Text style={styles.repostCreditText}>
+            {item.author.name} reposted from
+          </Text>
+          <Text style={styles.repostCreditAuthor}>{item.originalAuthor.name}</Text>
+        </View>
+      )}
+
+      <View style={styles.momentHeader}>
+        {/* Show original author avatar+info when it's a repost, otherwise show post author */}
+        {item.originalAuthor ? (
+          <>
+            <Avatar avatarId={item.originalAuthor.avatarId} alias={item.originalAuthor.name} size={40} />
+            <View style={styles.authorInfo}>
+              <View style={styles.nameRow}>
+                <Text style={styles.authorName}>{item.originalAuthor.name}</Text>
+                <Text style={styles.timestamp}>· {item.timestamp}</Text>
+              </View>
+              <Text style={styles.authorHandle}>{item.originalAuthor.handle}</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Avatar avatarId={item.author.avatarId} alias={item.author.name} size={40} />
+            <View style={styles.authorInfo}>
+              <View style={styles.nameRow}>
+                <Text style={styles.authorName}>{item.author.name}</Text>
+                <Text style={styles.timestamp}>· {item.timestamp}</Text>
+              </View>
+              <Text style={styles.authorHandle}>{item.author.handle}</Text>
+            </View>
+          </>
+        )}
       </View>
-    </Animated.View>
+      
+      <Text style={styles.momentContent}>{item.content}</Text>
+      
+      {/* Action Row: Like → Comment → Repost → Share */}
+      <View style={styles.actionsRow}>
+        <Pressable style={styles.actionButton} onPress={handleLike}>
+          <Animated.View style={heartStyle}>
+            <Ionicons 
+              name={item.isLiked ? "heart" : "heart-outline"} 
+              size={20} 
+              color={item.isLiked ? PINK : "rgba(255,255,255,0.5)"} 
+            />
+          </Animated.View>
+          <Text style={[styles.actionText, item.isLiked && { color: PINK }]}>
+            {item.likes}
+          </Text>
+        </Pressable>
+
+        <Pressable style={styles.actionButton} onPress={onComment}>
+          <Ionicons name="chatbubble-outline" size={19} color="rgba(255,255,255,0.5)" />
+          <Text style={styles.actionText}>{item.comments.length}</Text>
+        </Pressable>
+        
+        <Pressable style={styles.actionButton} onPress={onRepost}>
+          <Ionicons 
+            name={item.isReposted ? "repeat" : "repeat-outline"} 
+            size={21} 
+            color={item.isReposted ? '#10B981' : "rgba(255,255,255,0.5)"} 
+          />
+          <Text style={[styles.actionText, item.isReposted && { color: '#10B981' }]}>
+            {item.reposts}
+          </Text>
+        </Pressable>
+
+        <Pressable style={styles.actionButton} onPress={onShare}>
+          <Ionicons name="share-outline" size={20} color="rgba(255,255,255,0.5)" />
+        </Pressable>
+      </View>
+    </View>
   );
 };
 
-
-
-
-// ── Mood Streak Data ───────────────────────────────────────────
-const STREAK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const STREAK_ACTIVE = [true, true, true, true, false, false, false]; // first 4 days active
-
-// ════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// Main Screen
+// ═══════════════════════════════════════════════════════
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const [moments, setMoments] = useState(INITIAL_MOMENTS);
 
+  // Comment sheet state
+  const [commentMomentId, setCommentMomentId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const commentInputRef = useRef<TextInput>(null);
+
+  // Create moment modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [newContent, setNewContent] = useState('');
+
+  const myName = user?.alias || 'Me';
+  const myAvatar = user?.avatarId || 'avatar-1';
+
+  // ─── Handlers ───────────────────────────────────────
+  const toggleLike = (id: string) => {
+    setMoments(prev => prev.map(m => {
+      if (m.id === id) {
+        return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
+      }
+      return m;
+    }));
+  };
+
+  const openComments = (id: string) => {
+    setCommentMomentId(id);
+    setCommentText('');
+    setTimeout(() => commentInputRef.current?.focus(), 400);
+  };
+
+  const postComment = () => {
+    if (!commentText.trim() || !commentMomentId) return;
+    const newComment: Comment = {
+      id: `c-${Date.now()}`,
+      author: myName,
+      avatarId: myAvatar,
+      text: commentText.trim(),
+      timestamp: 'Just now',
+    };
+    setMoments(prev => prev.map(m => {
+      if (m.id === commentMomentId) {
+        return { ...m, comments: [...m.comments, newComment] };
+      }
+      return m;
+    }));
+    setCommentText('');
+  };
+
+  const handleRepost = (id: string) => {
+    const original = moments.find(m => m.id === id);
+    if (!original || original.isReposted) return;
+
+    setMoments(prev => {
+      const updated = prev.map(m => {
+        if (m.id === id) return { ...m, isReposted: true, reposts: m.reposts + 1 };
+        return m;
+      });
+      // Create repost with original author credit
+      const repost: Moment = {
+        id: `repost-${Date.now()}`,
+        author: { name: myName, handle: `@${myName.toLowerCase().replace(/\s/g, '')}`, avatarId: myAvatar },
+        originalAuthor: original.originalAuthor || original.author,
+        content: original.content,
+        timestamp: 'Just now',
+        likes: 0, comments: [], reposts: 0,
+        isLiked: false, isReposted: true, isMine: true,
+      };
+      return [repost, ...updated];
+    });
+  };
+
+  const handleShare = async (item: Moment) => {
+    try {
+      await Share.share({
+        message: `${item.author.name}: "${item.content}" — shared from Heylo`,
+      });
+    } catch (_) { /* cancelled */ }
+  };
+
+  const handleCreateMoment = () => {
+    if (!newContent.trim()) return;
+    const newMoment: Moment = {
+      id: `my-${Date.now()}`,
+      author: { name: myName, handle: `@${myName.toLowerCase().replace(/\s/g, '')}`, avatarId: myAvatar },
+      content: newContent.trim(),
+      timestamp: 'Just now',
+      likes: 0, comments: [], reposts: 0,
+      isLiked: false, isReposted: false, isMine: true,
+    };
+    setMoments(prev => [newMoment, ...prev]);
+    setNewContent('');
+    setShowCreate(false);
+  };
+
+  // ─── Comment Sheet (current moment) ─────────────────
+  const commentMoment = moments.find(m => m.id === commentMomentId);
+
+  // ─── Header ─────────────────────────────────────────
+  const listHeader = (
+    <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
+      <View style={styles.headerRow}>
+        <View>
+          <Heading level={1} style={styles.title}>Home</Heading>
+          <Text style={styles.subtitle}>See what others are thinking</Text>
+        </View>
+        <Pressable
+          style={styles.myMomentsBtn}
+          onPress={() => router.push('/(app)/my-moments')}
+        >
+          <Ionicons name="person" size={14} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.myMomentsBtnText}>My Moments</Text>
+        </Pressable>
+      </View>
+    </Animated.View>
+  );
+
+  // ─── Render ─────────────────────────────────────────
   return (
     <View style={styles.mainContainer}>
-      <LinearGradient
-        colors={['#18181B', '#000000']}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-
-          {/* ── Header ─────────────────────────────────────── */}
-          <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
-            <View>
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <Heading level={1} style={styles.aliasText}>{user?.alias || 'Traveler'}</Heading>
-            </View>
-            <Pressable onPress={() => router.push(Routes.app.about)}>
-              <Avatar avatarId={user?.avatarId || 'avatar-1'} alias={user?.alias} size={56} showOnline />
-            </Pressable>
-          </Animated.View>
-
-          {/* ── Active Status Pill ─────────────────────────── */}
-          <Animated.View entering={FadeIn.duration(600).delay(100)} style={styles.statusPill}>
-            <PulseDot color={EMERALD} />
-            <Text style={styles.statusText}>1,204 vibes active right now</Text>
-          </Animated.View>
-
-
-
-          {/* ── Hero Card: Find Connection ─────────────────── */}
-          <Animated.View entering={FadeInDown.duration(600).delay(200)}>
-            <Pressable
-              style={styles.heroCard}
-              onPress={() => router.push(Routes.app.matching)}
-            >
-              <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} />
-              <View style={styles.cardOverlay} />
-              <View style={styles.heroCardContent}>
-                <View style={styles.heroTextWrapper}>
-                  <Heading level={2} style={styles.cardTitleWhite}>Find Connection</Heading>
-                  <Text style={styles.cardSubtitleWhite}>Slide to match with someone who shares your vibe</Text>
-                </View>
-                <FloatingIcon name="heart" color={PINK} delay={0} />
-              </View>
-            </Pressable>
-          </Animated.View>
-
-
-
-          {/* ── Two‑up: Moments + Rooms ──────────────────── */}
-          <View style={styles.row}>
-            <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.flex1}>
-              <Pressable style={styles.smallCard} onPress={() => router.push(Routes.app.moments)}>
-                <FloatingIcon name="albums" color={PURPLE} delay={500} />
-                <Heading level={3} style={styles.cardTitle}>Moments</Heading>
-                <Text style={styles.cardSubtitle}>Share your world</Text>
-              </Pressable>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.duration(500).delay(450)} style={styles.flex1}>
-              <Pressable style={styles.smallCard} onPress={() => router.push(Routes.app.rooms)}>
-                <FloatingIcon name="mic" color={BLUE} delay={1000} />
-                <Heading level={3} style={styles.cardTitle}>Rooms</Heading>
-                <Text style={styles.cardSubtitle}>Join live rooms</Text>
-              </Pressable>
-            </Animated.View>
-          </View>
-
-          {/* ── Ask Me Anonymously Card ──────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(500)}>
-            <View style={styles.askCard}>
-              <LinearGradient
-                colors={['rgba(124,58,237,0.18)', 'rgba(59,130,246,0.10)']}
-                style={StyleSheet.absoluteFillObject}
+        <FlatList
+          data={moments}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item, index }) => (
+            <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
+              <MomentItem
+                item={item}
+                onLike={() => toggleLike(item.id)}
+                onComment={() => openComments(item.id)}
+                onRepost={() => handleRepost(item.id)}
+                onShare={() => handleShare(item)}
               />
-              {/* Top badge row */}
-              <View style={styles.askBadgeRow}>
-                <View style={styles.askBadge}>
-                  <Ionicons name="heart-outline" size={14} color={PURPLE} />
-                  <Text style={styles.askBadgeText}>Anonymous Feedback</Text>
-                </View>
-                <View style={styles.askLiveDot} />
-              </View>
+            </Animated.View>
+          )}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.2)" />
+              <Text style={styles.emptyText}>No moments yet</Text>
+            </View>
+          }
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+        
+        {/* FAB */}
+        <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.fabContainer}>
+          <Pressable style={styles.fab} onPress={() => setShowCreate(true)}>
+            <LinearGradient colors={[PINK, '#E11D48']} style={StyleSheet.absoluteFillObject} />
+            <Ionicons name="add" size={32} color="white" />
+          </Pressable>
+        </Animated.View>
 
-              {/* Headline */}
-              <Heading level={2} style={styles.askTitle}>How do your friends{`\n`}really feel about you? 💌</Heading>
-              <Text style={styles.askSubtitle}>
-                Share a link — friends leave honest, anonymous feedback about you. No names, just truth.
-              </Text>
+        {/* ─── Create Moment Modal ─────────────────────── */}
+        {showCreate && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
+            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+              <Pressable style={styles.overlayDismiss} onPress={() => setShowCreate(false)} />
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+                <Animated.View entering={SlideInDown.duration(350)} style={styles.createSheet}>
+                  <View style={styles.sheetHandle} />
+                  <Heading level={2} style={styles.sheetTitle}>New Moment</Heading>
+                  <Text style={styles.sheetSubtitle}>Share what's on your mind</Text>
 
-              {/* Preview feedback chips */}
-              <View style={styles.askPreviewRow}>
-                {['You make me smile 😊', 'You\'re so real', 'I miss talking to you'].map((q) => (
-                  <View key={q} style={styles.askPreviewChip}>
-                    <Text style={styles.askPreviewChipText}>{q}</Text>
+                  <View style={styles.createAuthorRow}>
+                    <Avatar avatarId={myAvatar} alias={myName} size={36} />
+                    <Text style={styles.createAuthorName}>{myName}</Text>
                   </View>
-                ))}
-              </View>
 
-              {/* CTA */}
-              <Pressable
-                style={styles.askCta}
-                onPress={() =>
-                  Share.share({
-                    message: `Tell me anonymously how you feel about me 💌\nhttps://heylo.app/feedback/${user?.alias?.toLowerCase() || 'me'}`,
-                    title: 'Anonymous Feedback',
-                  })
-                }
-              >
-                <LinearGradient colors={[PURPLE, '#9333EA']} style={StyleSheet.absoluteFillObject} />
-                <Ionicons name="link" size={18} color="white" />
-                <Text style={styles.askCtaText}>Share My Feedback Link</Text>
-                <Ionicons name="share-social" size={16} color="rgba(255,255,255,0.7)" />
-              </Pressable>
-            </View>
-          </Animated.View>
+                  <TextInput
+                    style={styles.createInput}
+                    placeholder="What's happening?"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={newContent}
+                    onChangeText={setNewContent}
+                    multiline
+                    maxLength={280}
+                    autoFocus
+                  />
 
-          {/* ── Mood Streak ─────────────────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(550)}>
-            <View style={styles.streakCard}>
-              <View style={styles.streakHeader}>
-                <View style={styles.streakTitleRow}>
-                  <Ionicons name="flame" size={22} color={AMBER} />
-                  <Heading level={3} style={styles.streakTitle}>4-Day Streak</Heading>
-                </View>
-                <Text style={styles.streakSubtext}>Keep matching daily!</Text>
-              </View>
-              <View style={styles.streakDays}>
-                {STREAK_DAYS.map((day, idx) => (
-                  <View key={idx} style={styles.streakDayItem}>
-                    <View style={[
-                      styles.streakCircle,
-                      STREAK_ACTIVE[idx] ? styles.streakCircleActive : styles.streakCircleInactive,
-                    ]}>
-                      {STREAK_ACTIVE[idx] && <Ionicons name="checkmark" size={14} color="white" />}
-                    </View>
-                    <Text style={[
-                      styles.streakDayLabel,
-                      STREAK_ACTIVE[idx] && styles.streakDayLabelActive,
-                    ]}>{day}</Text>
+                  <View style={styles.createFooter}>
+                    <Text style={styles.charCount}>{newContent.length}/280</Text>
+                    <Pressable
+                      style={[styles.postBtn, !newContent.trim() && styles.postBtnDisabled]}
+                      onPress={handleCreateMoment}
+                      disabled={!newContent.trim()}
+                    >
+                      <LinearGradient
+                        colors={newContent.trim() ? [PINK, '#E11D48'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <Text style={styles.postBtnText}>Post</Text>
+                    </Pressable>
                   </View>
-                ))}
-              </View>
-            </View>
+                </Animated.View>
+              </KeyboardAvoidingView>
+            </BlurView>
           </Animated.View>
+        )}
 
-          {/* ── Community Stats ─────────────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(600)}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Community</Text>
-            </View>
-            <View style={styles.communityRow}>
-              <View style={styles.communityStat}>
-                <Text style={styles.communityValue}>14.2K</Text>
-                <Text style={styles.communityLabel}>Matches Today</Text>
-              </View>
-              <View style={styles.communityDivider} />
-              <View style={styles.communityStat}>
-                <Text style={styles.communityValue}>2.8K</Text>
-                <Text style={styles.communityLabel}>Voice Sessions</Text>
-              </View>
-              <View style={styles.communityDivider} />
-              <View style={styles.communityStat}>
-                <Text style={styles.communityValue}>98%</Text>
-                <Text style={styles.communityLabel}>Safe Rating</Text>
-              </View>
-            </View>
+        {/* ─── Comment Sheet ───────────────────────────── */}
+        {commentMomentId && commentMoment && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
+            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+              <Pressable style={styles.overlayDismiss} onPress={() => setCommentMomentId(null)} />
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+                <Animated.View entering={SlideInDown.duration(350)} style={styles.commentSheet}>
+                  <View style={styles.sheetHandle} />
+                  <View style={styles.commentSheetHeader}>
+                    <Heading level={3} style={styles.sheetTitle}>Comments</Heading>
+                    <Pressable onPress={() => setCommentMomentId(null)}>
+                      <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
+                    </Pressable>
+                  </View>
+
+                  {/* Existing comments */}
+                  <FlatList
+                    data={commentMoment.comments}
+                    keyExtractor={(c) => c.id}
+                    style={styles.commentList}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                      <View style={styles.noComments}>
+                        <Text style={styles.noCommentsText}>No comments yet. Be the first!</Text>
+                      </View>
+                    }
+                    renderItem={({ item: c }) => (
+                      <View style={styles.commentItem}>
+                        <Avatar avatarId={c.avatarId} alias={c.author} size={28} />
+                        <View style={styles.commentBody}>
+                          <View style={styles.commentNameRow}>
+                            <Text style={styles.commentAuthor}>{c.author}</Text>
+                            <Text style={styles.commentTime}>{c.timestamp}</Text>
+                          </View>
+                          <Text style={styles.commentText}>{c.text}</Text>
+                        </View>
+                      </View>
+                    )}
+                  />
+
+                  {/* Input */}
+                  <View style={styles.commentInputRow}>
+                    <Avatar avatarId={myAvatar} alias={myName} size={28} />
+                    <TextInput
+                      ref={commentInputRef}
+                      style={styles.commentInput}
+                      placeholder="Add a comment..."
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      maxLength={200}
+                    />
+                    <Pressable
+                      onPress={postComment}
+                      disabled={!commentText.trim()}
+                      style={[styles.commentSendBtn, !commentText.trim() && { opacity: 0.3 }]}
+                    >
+                      <Ionicons name="send" size={20} color={PINK} />
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              </KeyboardAvoidingView>
+            </BlurView>
           </Animated.View>
+        )}
 
-
-
-          {/* ── Safety / Privacy Banner ─────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(700)}>
-            <Pressable style={styles.safetyCard} onPress={() => router.push(Routes.app.about)}>
-              <View style={styles.safetyIconBg}>
-                <Ionicons name="shield-checkmark" size={24} color={EMERALD} />
-              </View>
-              <View style={styles.safetyTextContent}>
-                <Heading level={3} style={styles.cardTitleSafety}>100% Anonymous</Heading>
-                <Text style={styles.cardSubtitle}>Zero data. End-to-end encrypted. Always.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
-            </Pressable>
-          </Animated.View>
-
-          {/* ── Invite Friends Banner ──────────────────────── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(750)}>
-            <Pressable style={styles.inviteCard} onPress={() => alert('Share link coming soon!')}>
-              <LinearGradient colors={['rgba(255,45,85,0.12)', 'rgba(124,58,237,0.08)']} style={StyleSheet.absoluteFillObject} />
-              <View style={styles.inviteContent}>
-                <View style={styles.inviteIconCircle}>
-                  <Ionicons name="paper-plane" size={22} color="white" />
-                </View>
-                <View style={styles.inviteTextContent}>
-                  <Text style={styles.inviteTitle}>Invite Friends</Text>
-                  <Text style={styles.inviteSubtitle}>Share Heylo & earn exclusive badges</Text>
-                </View>
-              </View>
-              <View style={styles.inviteArrow}>
-                <Ionicons name="arrow-forward-circle" size={32} color={PINK} />
-              </View>
-            </Pressable>
-          </Animated.View>
-
-        </ScrollView>
       </SafeAreaView>
     </View>
   );
 }
 
-// ═════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    paddingHorizontal: spacing['2xl'],
-    paddingTop: spacing.xl,
-    paddingBottom: 120,
-    gap: spacing['2xl'],
-  },
+  mainContainer: { flex: 1, backgroundColor: '#000' },
+  safeArea: { flex: 1 },
+  container: { paddingBottom: spacing['4xl'] * 2 },
 
-  // ── Header ───────────────────────────────────────────────
+  // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
-    marginBottom: 4,
-  },
-  aliasText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-
-  // ── Status Pill ──────────────────────────────────────────
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-  },
-
-  // ── Quick Actions ────────────────────────────────────────
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickAction: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-
-  // ── Hero Card ────────────────────────────────────────────
-  heroCard: {
-    width: '100%',
-    height: 140,
-    borderRadius: 28,
-    overflow: 'hidden',
-    justifyContent: 'center',
-  },
-  heroCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    zIndex: 2,
-  },
-  heroTextWrapper: {
-    flex: 1,
-    paddingRight: spacing.md,
-  },
-  cardTitleWhite: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.white,
-    marginBottom: 4,
-  },
-  cardSubtitleWhite: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 20,
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    zIndex: 1,
-  },
-
-  // ── Spotlight ────────────────────────────────────────────
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.white,
-  },
-  seeAllText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PINK,
-  },
-  spotlightList: {
-    gap: spacing.md,
-  },
-  spotlightCard: {
-    width: 110,
-    height: 150,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  spotlightGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-  },
-  spotlightAvatarRing: {
-    padding: 3,
-    borderRadius: 32,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
-    marginBottom: spacing.sm,
-  },
-  spotlightName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: 'white',
-  },
-  spotlightMood: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-
-  // ── Two‑up Cards ─────────────────────────────────────────
-  row: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  flex1: {
-    flex: 1,
-  },
-  smallCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 28,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.white,
-    marginTop: spacing.lg,
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.5)',
-    lineHeight: 18,
-  },
-
-  // ── Ask Me Anonymously Card ───────────────────────────────
-  askCard: {
-    borderRadius: 28,
-    padding: spacing.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(124,58,237,0.25)',
-    gap: spacing.md,
-  },
-  askBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  askBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(124,58,237,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  askBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: PURPLE,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  askLiveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: EMERALD,
-  },
-  askTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.white,
-    marginTop: 4,
-  },
-  askSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.55)',
-    lineHeight: 20,
-  },
-  askPreviewRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginVertical: 4,
-  },
-  askPreviewChip: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  askPreviewChipText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.65)',
-    fontWeight: '500',
-  },
-  askCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-    paddingVertical: 14,
-    marginTop: 4,
-  },
-  askCtaText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: 'white',
-  },
-
-  // ── Streak ───────────────────────────────────────────────
-  streakCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  streakHeader: {
+    paddingHorizontal: spacing['2xl'],
+    marginTop: spacing.xl,
     marginBottom: spacing.xl,
   },
-  streakTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: 4,
-  },
-  streakTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.white,
-  },
-  streakSubtext: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.5)',
-    marginLeft: 30,
-  },
-  streakDays: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  streakDayItem: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  streakCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  streakCircleActive: {
-    backgroundColor: AMBER,
-  },
-  streakCircleInactive: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  streakDayLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.3)',
-  },
-  streakDayLabelActive: {
-    color: AMBER,
-  },
+  title: { fontSize: 32, fontWeight: '800', color: colors.white },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 },
 
-  // ── Community Stats ──────────────────────────────────────
-  communityRow: {
+  myMomentsBtn: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    paddingVertical: spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  communityStat: {
-    flex: 1,
     alignItems: 'center',
-  },
-  communityValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.white,
-    marginBottom: 4,
-  },
-  communityLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  communityDivider: {
-    width: 1,
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  myMomentsBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+
+  // Repost credit
+  repostCreditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 10,
+    paddingLeft: 4,
+  },
+  repostCreditText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  repostCreditAuthor: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#10B981',
   },
 
-  // ── Events ───────────────────────────────────────────────
-  eventCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  // Moment card
+  momentCard: {
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.lg,
+  },
+  momentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  authorInfo: { flex: 1, marginLeft: spacing.md },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  authorName: { fontSize: 16, fontWeight: '700', color: colors.white },
+  timestamp: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginLeft: 4 },
+  authorHandle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+
+  momentContent: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 24,
+    marginBottom: spacing.lg,
+  },
+
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: spacing.xl,
+  },
+  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionText: { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
+
+  separator: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
+
+  // Empty state
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
+  emptyText: { fontSize: 15, color: 'rgba(255,255,255,0.35)' },
+
+  // FAB
+  fabContainer: { position: 'absolute', bottom: spacing['2xl'], right: spacing['2xl'] },
+  fab: {
+    width: 60, height: 60, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    shadowColor: PINK, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
+  },
+
+  // Overlay shared
+  overlayWrapper: { ...StyleSheet.absoluteFillObject, zIndex: 100 },
+  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
+  overlayDismiss: { ...StyleSheet.absoluteFillObject },
+  sheetHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  sheetTitle: { fontSize: 22, fontWeight: '800', color: 'white', textAlign: 'center' },
+  sheetSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 4, marginBottom: spacing.xl },
+
+  // Create sheet — dark theme
+  createSheet: {
+    backgroundColor: SHEET_BG,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['2xl'],
+    minHeight: 340,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  createAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: spacing.md,
+  },
+  createAuthorName: { fontSize: 15, fontWeight: '600', color: 'white' },
+  createInput: {
+    color: 'white',
+    fontSize: 17,
+    lineHeight: 26,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingVertical: spacing.sm,
+  },
+  createFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingTop: spacing.md,
+  },
+  charCount: { fontSize: 13, color: 'rgba(255,255,255,0.25)' },
+  postBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 10,
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
   },
-  eventGradientStrip: {
-    height: 4,
-  },
-  eventContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  eventDateBubble: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eventDateDay: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.white,
-    lineHeight: 22,
-  },
-  eventDateMonth: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1,
-  },
-  eventTextContent: {
-    flex: 1,
-  },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.white,
-    marginBottom: 2,
-  },
-  eventSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  eventJoinBadge: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  eventJoinText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: PINK,
-  },
+  postBtnDisabled: { opacity: 0.5 },
+  postBtnText: { fontSize: 15, fontWeight: '700', color: 'white' },
 
-  // ── Safety Banner ────────────────────────────────────────
-  safetyCard: {
+  // Comment sheet — dark theme
+  commentSheet: {
+    backgroundColor: SHEET_BG,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    maxHeight: SCREEN_HEIGHT * 0.65,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  commentSheetHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  safetyIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(16,185,129,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  safetyTextContent: {
-    flex: 1,
-  },
-  cardTitleSafety: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.white,
-    marginBottom: 4,
-  },
-
-  // ── Invite Card ──────────────────────────────────────────
-  inviteCard: {
-    borderRadius: 24,
-    padding: spacing.xl,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255,45,85,0.15)',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  inviteContent: {
+  commentList: { maxHeight: SCREEN_HEIGHT * 0.35 },
+  noComments: { paddingVertical: 30, alignItems: 'center' },
+  noCommentsText: { fontSize: 14, color: 'rgba(255,255,255,0.25)' },
+
+  commentItem: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  commentBody: { flex: 1 },
+  commentNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  commentAuthor: { fontSize: 14, fontWeight: '700', color: 'white' },
+  commentTime: { fontSize: 12, color: 'rgba(255,255,255,0.25)' },
+  commentText: { fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20, marginTop: 3 },
+
+  commentInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    marginTop: spacing.sm,
+  },
+  commentInput: {
     flex: 1,
+    color: 'white',
+    fontSize: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: SHEET_SURFACE,
   },
-  inviteIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: PINK,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  inviteTextContent: {
-    flex: 1,
-  },
-  inviteTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.white,
-    marginBottom: 2,
-  },
-  inviteSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-  },
-  inviteArrow: {
-    marginLeft: spacing.md,
-  },
-
-  // ── Shared Icon Styles ───────────────────────────────────
-  floatingIconContainer: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconSolid: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    opacity: 0.35,
-    transform: [{ scale: 1.45 }],
-  },
+  commentSendBtn: { padding: 6 },
 });
-

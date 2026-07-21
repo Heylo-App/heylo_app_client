@@ -51,20 +51,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="moments"
-        options={{
-          title: 'Moments',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="albums-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="rooms"
         options={{
           title: 'Rooms',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="mic-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
