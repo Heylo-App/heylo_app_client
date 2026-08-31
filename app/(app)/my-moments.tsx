@@ -1,7 +1,14 @@
-import { useState } from 'react';
-import { StyleSheet, View, FlatList, Pressable, Dimensions } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, View, FlatList, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withSequence } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -11,88 +18,31 @@ import { Avatar } from '@/components/ui/Avatar';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
+import { momentsService } from '@/services/moments.service';
+import { socketService } from '@/services/socket.service';
+import type { Moment } from '@/types/moment';
 
-
-interface MyMoment {
-  id: string;
-  content: string;
-  timestamp: string;
-  likes: number;
-  comments: number;
-  reposts: number;
-  isLiked: boolean;
-  isRepost: boolean;
-  originalAuthor?: { name: string; handle: string; avatarId: string };
-}
-
-// Mock data for demo — in production this would come from the store/API
-const MY_MOMENTS_DATA: MyMoment[] = [
-  {
-    id: 'my-1',
-    content: 'Just started using Heylo and already loving the vibe here ✨',
-    timestamp: '1h ago',
-    likes: 8, comments: 2, reposts: 0,
-    isLiked: false, isRepost: false,
-  },
-  {
-    id: 'my-2',
-    content: 'Learning React Native Reanimated. The learning curve is real but the results are so worth it. 🚀',
-    timestamp: '3h ago',
-    likes: 3, comments: 0, reposts: 0,
-    isLiked: false, isRepost: true,
-    originalAuthor: { name: 'Mike Ross', handle: '@mikeross', avatarId: 'avatar-2' },
-  },
-  {
-    id: 'my-3',
-    content: 'Late night coding sessions hit different with lo-fi beats 🎧',
-    timestamp: '1d ago',
-    likes: 14, comments: 5, reposts: 1,
-    isLiked: true, isRepost: false,
-  },
-];
-
-const MyMomentCard = ({ item, myName, myAvatar, onLike }: {
-  item: MyMoment;
-  myName: string;
-  myAvatar: string;
-  onLike: () => void;
-}) => {
+const MyMomentCard = ({ item, onLike }: { item: Moment; onLike: () => void }) => {
   const scale = useSharedValue(1);
 
   const handleLike = () => {
-    scale.value = withSequence(
-      withSpring(1.3, { damping: 2, stiffness: 150 }),
-      withSpring(1)
-    );
+    scale.value = withSequence(withSpring(1.3, { damping: 2, stiffness: 150 }), withSpring(1));
     onLike();
   };
 
   const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
+    transform: [{ scale: scale.value }],
   }));
 
   return (
     <View style={styles.card}>
-      {/* Repost credit */}
-      {item.isRepost && item.originalAuthor && (
-        <View style={styles.repostCreditRow}>
-          <Ionicons name="repeat" size={14} color="#10B981" />
-          <Text style={styles.repostCreditText}>Reposted from</Text>
-          <Text style={styles.repostCreditAuthor}>{item.originalAuthor.name}</Text>
-        </View>
-      )}
-
       <View style={styles.cardHeader}>
-        <Avatar
-          avatarId={item.isRepost && item.originalAuthor ? item.originalAuthor.avatarId : myAvatar}
-          alias={item.isRepost && item.originalAuthor ? item.originalAuthor.name : myName}
-          size={36}
-        />
+        <Avatar avatarId={item.author.avatarId} alias={item.author.name} size={36} />
         <View style={styles.cardAuthorInfo}>
-          <Text style={styles.cardAuthorName}>
-            {item.isRepost && item.originalAuthor ? item.originalAuthor.name : myName}
+          <Text style={styles.cardAuthorName}>{item.author.name}</Text>
+          <Text style={styles.cardTimestamp}>
+            {item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'Just now'}
           </Text>
-          <Text style={styles.cardTimestamp}>{item.timestamp}</Text>
         </View>
       </View>
 
@@ -107,17 +57,14 @@ const MyMomentCard = ({ item, myName, myAvatar, onLike }: {
               color={item.isLiked ? colors.primary : 'rgba(255,255,255,0.45)'}
             />
           </Animated.View>
-          <Text style={[styles.actionCount, item.isLiked && { color: colors.primary }]}>{item.likes}</Text>
+          <Text style={[styles.actionCount, item.isLiked && { color: colors.primary }]}>
+            {item.likes}
+          </Text>
         </Pressable>
 
         <View style={styles.actionBtn}>
           <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.45)" />
-          <Text style={styles.actionCount}>{item.comments}</Text>
-        </View>
-
-        <View style={styles.actionBtn}>
-          <Ionicons name="repeat-outline" size={19} color="rgba(255,255,255,0.45)" />
-          <Text style={styles.actionCount}>{item.reposts}</Text>
+          <Text style={styles.actionCount}>{item.comments?.length || 0}</Text>
         </View>
       </View>
     </View>
@@ -127,22 +74,92 @@ const MyMomentCard = ({ item, myName, myAvatar, onLike }: {
 export default function MyMomentsScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const [moments, setMoments] = useState(MY_MOMENTS_DATA);
+  const [moments, setMoments] = useState<Moment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const myName = user?.alias || 'Me';
+  const myName = user?.alias || user?.name || 'Me';
   const myAvatar = user?.avatarId || 'avatar-1';
 
-  const toggleLike = (id: string) => {
-    setMoments(prev => prev.map(m => {
-      if (m.id === id) {
-        return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
-      }
-      return m;
-    }));
+  const fetchMyMoments = useCallback(async () => {
+    try {
+      const data = await momentsService.getFeed();
+      // Filter for only the current user's moments
+      setMoments(data.filter((m) => m.isMine));
+    } catch (error) {
+      console.error('Failed to fetch my moments', error);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchMyMoments();
+    setIsRefreshing(false);
+  }, [fetchMyMoments]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchMyMoments().finally(() => setIsLoading(false));
+  }, [fetchMyMoments]);
+
+  useEffect(() => {
+    if (!socketService.isConnected) {
+      useAuthStore.getState().token && socketService.connect(useAuthStore.getState().token!);
+    }
+
+    const handleMomentCreated = (newMoment: Moment) => {
+      setMoments((prev) => {
+        if (!newMoment.isMine || prev.find((m) => m.id === newMoment.id)) return prev;
+        return [newMoment, ...prev];
+      });
+    };
+
+    const handleMomentUpdated = (update: { id: string; likes: number; comments: any[] }) => {
+      setMoments((prev) =>
+        prev.map((m) => {
+          if (m.id === update.id) {
+            return { ...m, likes: update.likes, comments: update.comments };
+          }
+          return m;
+        }),
+      );
+    };
+
+    socketService.on('moment:created', handleMomentCreated);
+    socketService.on('moment:updated', handleMomentUpdated);
+
+    return () => {
+      socketService.off('moment:created', handleMomentCreated);
+      socketService.off('moment:updated', handleMomentUpdated);
+    };
+  }, []);
+
+  const toggleLike = async (id: string) => {
+    setMoments((prev) =>
+      prev.map((m) => {
+        if (m.id === id) {
+          return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
+        }
+        return m;
+      }),
+    );
+    try {
+      await momentsService.toggleLike(id);
+    } catch (error) {
+      console.error('Failed to toggle like', error);
+      setMoments((prev) =>
+        prev.map((m) => {
+          if (m.id === id) {
+            return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
+          }
+          return m;
+        }),
+      );
+    }
   };
 
-  const myMomentCount = moments.filter(m => !m.isRepost).length;
-  const repostCount = moments.filter(m => m.isRepost).length;
+  const myMomentCount = moments.length;
+  const totalLikes = moments.reduce((sum, m) => sum + m.likes, 0);
 
   return (
     <View style={styles.mainContainer}>
@@ -153,6 +170,13 @@ export default function MyMomentsScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor="rgba(255,255,255,0.5)"
+            />
+          }
           ListHeaderComponent={
             <Animated.View entering={FadeIn.duration(500)}>
               {/* Back + Title */}
@@ -160,7 +184,9 @@ export default function MyMomentsScreen() {
                 <Pressable onPress={() => router.back()} style={styles.backBtn}>
                   <Ionicons name="arrow-back" size={24} color="white" />
                 </Pressable>
-                <Heading level={1} style={styles.title}>My Moments</Heading>
+                <Heading level={1} style={styles.title}>
+                  My Moments
+                </Heading>
                 <View style={{ width: 40 }} />
               </View>
 
@@ -176,12 +202,7 @@ export default function MyMomentsScreen() {
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{repostCount}</Text>
-                      <Text style={styles.statLabel}>Reposts</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{moments.reduce((sum, m) => sum + m.likes, 0)}</Text>
+                      <Text style={styles.statValue}>{totalLikes}</Text>
                       <Text style={styles.statLabel}>Likes</Text>
                     </View>
                   </View>
@@ -190,20 +211,17 @@ export default function MyMomentsScreen() {
             </Animated.View>
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.15)" />
-              <Text style={styles.emptyText}>You haven't posted any moments yet</Text>
-            </View>
+            !isLoading ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.15)" />
+                <Text style={styles.emptyText}>You haven&apos;t posted any moments yet</Text>
+              </View>
+            ) : null
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
-              <MyMomentCard
-                item={item}
-                myName={myName}
-                myAvatar={myAvatar}
-                onLike={() => toggleLike(item.id)}
-              />
+              <MyMomentCard item={item} onLike={() => toggleLike(item.id)} />
             </Animated.View>
           )}
         />
@@ -227,9 +245,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: { fontSize: 22, fontWeight: '800', color: 'white' },
 
@@ -251,17 +272,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '800', color: 'white' },
   statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
   statDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.08)' },
-
-  // Repost credit
-  repostCreditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 10,
-    paddingLeft: 4,
-  },
-  repostCreditText: { fontSize: 12, color: 'rgba(255,255,255,0.4)' },
-  repostCreditAuthor: { fontSize: 12, fontWeight: '700', color: '#10B981' },
 
   // Card
   card: {

@@ -1,7 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, StyleSheet, View, ScrollView, Pressable } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  View,
+  ScrollView,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,9 +19,9 @@ import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
 import { loginSchema, type LoginFormData } from '@/features/auth/validation';
 import { useAuthStore } from '@/store/auth.store';
+import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
-
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,25 +30,36 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { identifier: '', password: '' },
   });
 
-  const onSubmit = handleSubmit((data) => {
-    // Demo mode: mock user as already onboarded, no API call
-    setUser({
-      id: 'demo-user-' + Date.now(),
-      alias: data.identifier.split('@')[0],
-      avatarId: 'avatar_1',
-      mood: 'chill',
-      needs: [],
-      reputation: 0,
-      createdAt: new Date().toISOString(),
-      isOnboarded: true,
-    });
-    router.replace(Routes.app.home);
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      const response = await authService.login({
+        identifier: data.identifier,
+        password: data.password,
+      });
+      setUser(response.user);
+
+      if (response.user.isOnboarded) {
+        router.replace(Routes.app.home);
+      } else {
+        router.replace(Routes.onboarding.profileDetails);
+      }
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      setError('root.serverError', {
+        type: 'server',
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          'An unexpected error occurred. Please try again.',
+      });
+    }
   });
 
   return (
@@ -67,10 +85,10 @@ export default function LoginScreen() {
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
               <Text style={styles.logo}>heylo.</Text>
-              <Heading level={1} style={styles.title}>Welcome Back</Heading>
-              <Text style={styles.subtitle}>
-                Sign in to continue your anonymous journey.
-              </Text>
+              <Heading level={1} style={styles.title}>
+                Welcome Back
+              </Heading>
+              <Text style={styles.subtitle}>Sign in to continue your anonymous journey.</Text>
             </Animated.View>
 
             {/* Form */}
@@ -110,7 +128,12 @@ export default function LoginScreen() {
                 )}
               />
 
-              {/* No error box needed in demo mode */}
+              {errors.root?.serverError && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={20} color={colors.primary} />
+                  <Text style={styles.errorText}>{errors.root.serverError.message}</Text>
+                </View>
+              )}
             </Animated.View>
 
             {/* Footer */}
@@ -121,7 +144,12 @@ export default function LoginScreen() {
               </View>
 
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
                 <>
                   <Text style={styles.submitBtnText}>Log In</Text>
                   <Ionicons name="arrow-forward" size={20} color="white" />
@@ -130,7 +158,7 @@ export default function LoginScreen() {
 
               <Pressable onPress={() => router.push(Routes.auth.register)}>
                 <Text style={styles.switchText}>
-                  Don't have an account? <Text style={styles.linkText}>Create one</Text>
+                  Don&apos;t have an account? <Text style={styles.linkText}>Create one</Text>
                 </Text>
               </Pressable>
             </Animated.View>

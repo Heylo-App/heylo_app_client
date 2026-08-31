@@ -1,7 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,9 +19,9 @@ import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
 import { registerSchema, type RegisterFormData } from '@/features/auth/validation';
 import { useAuthStore } from '@/store/auth.store';
+import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
-
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -23,6 +30,7 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -33,19 +41,24 @@ export default function RegisterScreen() {
     },
   });
 
-  const onSubmit = handleSubmit((data) => {
-    // Demo mode: create a mock user locally, no API call
-    setUser({
-      id: 'demo-user-' + Date.now(),
-      alias: data.email.split('@')[0],
-      avatarId: 'avatar_1',
-      mood: 'chill',
-      needs: [],
-      reputation: 0,
-      createdAt: new Date().toISOString(),
-      isOnboarded: false,
-    });
-    router.replace(Routes.onboarding.profileDetails);
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      const response = await authService.register({
+        email: data.email,
+        password: data.password,
+      });
+      setUser(response.user);
+      router.replace(Routes.onboarding.profileDetails);
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      setError('root.serverError', {
+        type: 'server',
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          'An unexpected error occurred. Please try again.',
+      });
+    }
   });
 
   return (
@@ -75,7 +88,9 @@ export default function RegisterScreen() {
           >
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
-              <Heading level={1} style={styles.title}>Create Account</Heading>
+              <Heading level={1} style={styles.title}>
+                Create Account
+              </Heading>
               <Text style={styles.subtitle}>
                 Start your anonymous journey. Your identity stays yours.
               </Text>
@@ -99,7 +114,6 @@ export default function RegisterScreen() {
                       onBlur={onBlur}
                       error={errors.email?.message}
                     />
-                    
                   </View>
                 )}
               />
@@ -127,36 +141,48 @@ export default function RegisterScreen() {
                 name="confirmPassword"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
-                  <Input
-                    label="Confirm Password"
-                    placeholder="Re-enter your password"
-                    secureTextEntry
-                    secureTextEntryToggle
-                    autoCapitalize="none"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    error={errors.confirmPassword?.message}
-                  />
-<View style={styles.fieldHint}>
+                    <Input
+                      label="Confirm Password"
+                      placeholder="Re-enter your password"
+                      secureTextEntry
+                      secureTextEntryToggle
+                      autoCapitalize="none"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.confirmPassword?.message}
+                    />
+                    <View style={styles.fieldHint}>
                       <Ionicons name="eye-off-outline" size={14} color="rgba(255,255,255,0.3)" />
                       <Text style={styles.fieldHintText}>Never shared publicly</Text>
                     </View>
-                    </View>
+                  </View>
                 )}
               />
 
-              {/* No error box needed in demo mode */}
+              {errors.root?.serverError && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={20} color={colors.primary} />
+                  <Text style={styles.errorText}>{errors.root.serverError.message}</Text>
+                </View>
+              )}
             </Animated.View>
 
             {/* Footer */}
             <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.footer}>
               <Text style={styles.termsText}>
-                By registering, you agree to our <Text style={styles.linkText}>Terms of Service</Text> and <Text style={styles.linkText}>Privacy Policy</Text>.
+                By registering, you agree to our{' '}
+                <Text style={styles.linkText}>Terms of Service</Text> and{' '}
+                <Text style={styles.linkText}>Privacy Policy</Text>.
               </Text>
 
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
                 <>
                   <Text style={styles.submitBtnText}>Continue</Text>
                   <Ionicons name="arrow-forward" size={20} color="white" />

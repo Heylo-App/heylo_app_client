@@ -1,20 +1,22 @@
 export const endpoints = {
   auth: {
-    sendOtp: '/auth/otp/send',
-    verifyOtp: '/auth/otp/verify',
+    register: '/auth/register',
+    login: '/auth/login',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
     me: '/auth/me',
   },
   users: {
+    active: '/users/active',
     suggested: '/users/suggested',
     profile: (id: string) => `/users/${id}`,
-    updateMood: '/users/mood',
+    updateProfile: '/users/me',
   },
   moments: {
     list: '/moments',
     create: '/moments',
     like: (id: string) => `/moments/${id}/like`,
+    comment: (id: string) => `/moments/${id}/comments`,
     detail: (id: string) => `/moments/${id}`,
   },
   chats: {
@@ -22,11 +24,19 @@ export const endpoints = {
     messages: (id: string) => `/chats/${id}/messages`,
     send: (id: string) => `/chats/${id}/messages`,
   },
-  voice: {
-    rooms: '/voice/rooms',
-    join: (id: string) => `/voice/rooms/${id}/join`,
-    leave: (id: string) => `/voice/rooms/${id}/leave`,
-    token: (id: string) => `/voice/rooms/${id}/token`,
+  groups: {
+    list: '/groups',
+    create: '/groups',
+    invitePreview: (code: string) => `/groups/invite/${code}`,
+    join: (code: string) => `/groups/invite/${code}/join`,
+    addMember: (id: string) => `/groups/${id}/add-member`,
+    getInvites: '/groups/invites',
+    acceptInvite: (id: string) => `/groups/invites/${id}/accept`,
+    declineInvite: (id: string) => `/groups/invites/${id}/decline`,
+    messages: (id: string) => `/groups/${id}/messages`,
+    info: (id: string) => `/groups/${id}/info`,
+    delete: (id: string) => `/groups/${id}`,
+    leave: (id: string) => `/groups/${id}/leave`,
   },
   moderation: {
     report: '/moderation/report',

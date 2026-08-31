@@ -1,7 +1,26 @@
-import { useState, useRef } from 'react';
-import { StyleSheet, View, FlatList, Pressable, TextInput, Share, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Pressable,
+  TextInput,
+  Share,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withSequence } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  SlideInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -12,153 +31,63 @@ import { Avatar } from '@/components/ui/Avatar';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
+import { momentsService } from '@/services/moments.service';
+import type { Moment } from '@/types/moment';
 
 const SHEET_BG = '#111115';
 const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ─── Types ──────────────────────────────────────────────
-interface Comment {
-  id: string;
-  author: string;
-  avatarId: string;
-  text: string;
-  timestamp: string;
-}
-
-interface Moment {
-  id: string;
-  author: {
-    name: string;
-    handle: string;
-    avatarId: string;
-  };
-  content: string;
-  timestamp: string;
-  likes: number;
-  comments: Comment[];
-  reposts: number;
-  isLiked: boolean;
-  isReposted: boolean;
-  isMine: boolean;
-  originalAuthor?: {
-    name: string;
-    handle: string;
-    avatarId: string;
-  };
-}
-
-// ─── Mock Data ──────────────────────────────────────────
-const INITIAL_MOMENTS: Moment[] = [
-  {
-    id: '1',
-    author: { name: 'Sarah Jenkins', handle: '@sarahj', avatarId: 'avatar-1' },
-    content: 'Just had the best coffee at the new place downtown! ☕️ Anyone else been there yet?',
-    timestamp: '2h ago',
-    likes: 24, comments: [
-      { id: 'c1', author: 'Mike', avatarId: 'avatar-2', text: 'Which place? I need to try it!', timestamp: '1h ago' },
-    ], reposts: 2, isLiked: false, isReposted: false, isMine: false,
-  },
-  {
-    id: '2',
-    author: { name: 'Mike Ross', handle: '@mikeross', avatarId: 'avatar-2' },
-    content: 'Learning React Native Reanimated. The learning curve is real but the results are so worth it. 🚀',
-    timestamp: '4h ago',
-    likes: 112, comments: [
-      { id: 'c2', author: 'Elena', avatarId: 'avatar-3', text: 'So true! Check out William Candillon\'s channel.', timestamp: '3h ago' },
-      { id: 'c3', author: 'David', avatarId: 'avatar-4', text: 'Stick with it! Gets easier.', timestamp: '2h ago' },
-    ], reposts: 12, isLiked: true, isReposted: false, isMine: false,
-  },
-  {
-    id: '3',
-    author: { name: 'Elena Gilbert', handle: '@elenag', avatarId: 'avatar-3' },
-    content: 'Looking for podcast recommendations! I love true crime and tech. Drop your favorites below 👇',
-    timestamp: '5h ago',
-    likes: 45, comments: [], reposts: 0, isLiked: false, isReposted: false, isMine: false,
-  },
-  {
-    id: '4',
-    author: { name: 'David Kim', handle: '@dkim', avatarId: 'avatar-4' },
-    content: 'What a beautiful sunset tonight! Sometimes you just have to stop and appreciate the little things.',
-    timestamp: '1d ago',
-    likes: 89, comments: [], reposts: 5, isLiked: false, isReposted: false, isMine: false,
-  }
-];
-
 // ═══════════════════════════════════════════════════════
 // MomentItem Component
 // ═══════════════════════════════════════════════════════
-const MomentItem = ({ item, onLike, onComment, onRepost, onShare }: {
+const MomentItem = ({
+  item,
+  onLike,
+  onComment,
+  onShare,
+}: {
   item: Moment;
   onLike: () => void;
   onComment: () => void;
-  onRepost: () => void;
   onShare: () => void;
 }) => {
   const scale = useSharedValue(1);
 
   const handleLike = () => {
-    scale.value = withSequence(
-      withSpring(1.3, { damping: 2, stiffness: 150 }),
-      withSpring(1)
-    );
+    scale.value = withSequence(withSpring(1.3, { damping: 2, stiffness: 150 }), withSpring(1));
     onLike();
   };
 
   const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
+    transform: [{ scale: scale.value }],
   }));
 
   return (
     <View style={styles.momentCard}>
-      {/* Repost credit banner */}
-      {item.originalAuthor && (
-        <View style={styles.repostCreditRow}>
-          <Ionicons name="repeat" size={14} color="#10B981" />
-          <Text style={styles.repostCreditText}>
-            {item.author.name} reposted from
-          </Text>
-          <Text style={styles.repostCreditAuthor}>{item.originalAuthor.name}</Text>
-        </View>
-      )}
-
       <View style={styles.momentHeader}>
-        {/* Show original author avatar+info when it's a repost, otherwise show post author */}
-        {item.originalAuthor ? (
-          <>
-            <Avatar avatarId={item.originalAuthor.avatarId} alias={item.originalAuthor.name} size={40} />
-            <View style={styles.authorInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.authorName}>{item.originalAuthor.name}</Text>
-                <Text style={styles.timestamp}>· {item.timestamp}</Text>
-              </View>
-              <Text style={styles.authorHandle}>{item.originalAuthor.handle}</Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <Avatar avatarId={item.author.avatarId} alias={item.author.name} size={40} />
-            <View style={styles.authorInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.authorName}>{item.author.name}</Text>
-                <Text style={styles.timestamp}>· {item.timestamp}</Text>
-              </View>
-              <Text style={styles.authorHandle}>{item.author.handle}</Text>
-            </View>
-          </>
-        )}
+        <Avatar avatarId={item.author.avatarId} alias={item.author.name} size={40} />
+        <View style={styles.authorInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.authorName}>{item.author.name}</Text>
+            <Text style={styles.timestamp}>
+              · {item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'Just now'}
+            </Text>
+          </View>
+          <Text style={styles.authorHandle}>{item.author.handle}</Text>
+        </View>
       </View>
-      
+
       <Text style={styles.momentContent}>{item.content}</Text>
-      
-      {/* Action Row: Like → Comment → Repost → Share */}
+
+      {/* Action Row: Like → Comment → Share */}
       <View style={styles.actionsRow}>
         <Pressable style={styles.actionButton} onPress={handleLike}>
           <Animated.View style={heartStyle}>
-            <Ionicons 
-              name={item.isLiked ? "heart" : "heart-outline"} 
-              size={20} 
-              color={item.isLiked ? colors.primary : "rgba(255,255,255,0.5)"} 
+            <Ionicons
+              name={item.isLiked ? 'heart' : 'heart-outline'}
+              size={20}
+              color={item.isLiked ? colors.primary : 'rgba(255,255,255,0.5)'}
             />
           </Animated.View>
           <Text style={[styles.actionText, item.isLiked && { color: colors.primary }]}>
@@ -168,18 +97,7 @@ const MomentItem = ({ item, onLike, onComment, onRepost, onShare }: {
 
         <Pressable style={styles.actionButton} onPress={onComment}>
           <Ionicons name="chatbubble-outline" size={19} color="rgba(255,255,255,0.5)" />
-          <Text style={styles.actionText}>{item.comments.length}</Text>
-        </Pressable>
-        
-        <Pressable style={styles.actionButton} onPress={onRepost}>
-          <Ionicons 
-            name={item.isReposted ? "repeat" : "repeat-outline"} 
-            size={21} 
-            color={item.isReposted ? '#10B981' : "rgba(255,255,255,0.5)"} 
-          />
-          <Text style={[styles.actionText, item.isReposted && { color: '#10B981' }]}>
-            {item.reposts}
-          </Text>
+          <Text style={styles.actionText}>{item.comments?.length || 0}</Text>
         </Pressable>
 
         <Pressable style={styles.actionButton} onPress={onShare}>
@@ -196,28 +114,70 @@ const MomentItem = ({ item, onLike, onComment, onRepost, onShare }: {
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const [moments, setMoments] = useState(INITIAL_MOMENTS);
+  const [moments, setMoments] = useState<Moment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Comment sheet state
   const [commentMomentId, setCommentMomentId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [isCommenting, setIsCommenting] = useState(false);
   const commentInputRef = useRef<TextInput>(null);
 
   // Create moment modal state
   const [showCreate, setShowCreate] = useState(false);
   const [newContent, setNewContent] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
 
-  const myName = user?.alias || 'Me';
+  const myName = user?.alias || user?.name || 'Me';
   const myAvatar = user?.avatarId || 'avatar-1';
 
+  // ─── Data Fetching ──────────────────────────────────
+  const fetchFeed = useCallback(async () => {
+    try {
+      const data = await momentsService.getFeed();
+      setMoments(data);
+    } catch (error) {
+      console.error('Failed to fetch moments', error);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchFeed();
+    setIsRefreshing(false);
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchFeed().finally(() => setIsLoading(false));
+  }, [fetchFeed]);
+
   // ─── Handlers ───────────────────────────────────────
-  const toggleLike = (id: string) => {
-    setMoments(prev => prev.map(m => {
-      if (m.id === id) {
-        return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
-      }
-      return m;
-    }));
+  const toggleLike = async (id: string) => {
+    // Optimistic update
+    setMoments((prev) =>
+      prev.map((m) => {
+        if (m.id === id) {
+          return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
+        }
+        return m;
+      }),
+    );
+    try {
+      await momentsService.toggleLike(id);
+    } catch (error) {
+      console.error('Failed to toggle like', error);
+      // Revert on failure
+      setMoments((prev) =>
+        prev.map((m) => {
+          if (m.id === id) {
+            return { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 };
+          }
+          return m;
+        }),
+      );
+    }
   };
 
   const openComments = (id: string) => {
@@ -226,45 +186,18 @@ export default function HomeScreen() {
     setTimeout(() => commentInputRef.current?.focus(), 400);
   };
 
-  const postComment = () => {
-    if (!commentText.trim() || !commentMomentId) return;
-    const newComment: Comment = {
-      id: `c-${Date.now()}`,
-      author: myName,
-      avatarId: myAvatar,
-      text: commentText.trim(),
-      timestamp: 'Just now',
-    };
-    setMoments(prev => prev.map(m => {
-      if (m.id === commentMomentId) {
-        return { ...m, comments: [...m.comments, newComment] };
-      }
-      return m;
-    }));
-    setCommentText('');
-  };
-
-  const handleRepost = (id: string) => {
-    const original = moments.find(m => m.id === id);
-    if (!original || original.isReposted) return;
-
-    setMoments(prev => {
-      const updated = prev.map(m => {
-        if (m.id === id) return { ...m, isReposted: true, reposts: m.reposts + 1 };
-        return m;
-      });
-      // Create repost with original author credit
-      const repost: Moment = {
-        id: `repost-${Date.now()}`,
-        author: { name: myName, handle: `@${myName.toLowerCase().replace(/\s/g, '')}`, avatarId: myAvatar },
-        originalAuthor: original.originalAuthor || original.author,
-        content: original.content,
-        timestamp: 'Just now',
-        likes: 0, comments: [], reposts: 0,
-        isLiked: false, isReposted: true, isMine: true,
-      };
-      return [repost, ...updated];
-    });
+  const postComment = async () => {
+    if (!commentText.trim() || !commentMomentId || isCommenting) return;
+    setIsCommenting(true);
+    try {
+      const updatedMoment = await momentsService.addComment(commentMomentId, commentText.trim());
+      setMoments((prev) => prev.map((m) => (m.id === commentMomentId ? updatedMoment : m)));
+      setCommentText('');
+    } catch (error) {
+      console.error('Failed to post comment', error);
+    } finally {
+      setIsCommenting(false);
+    }
   };
 
   const handleShare = async (item: Moment) => {
@@ -272,39 +205,40 @@ export default function HomeScreen() {
       await Share.share({
         message: `${item.author.name}: "${item.content}" — shared from Heylo`,
       });
-    } catch (_) { /* cancelled */ }
+    } catch {
+      /* cancelled */
+    }
   };
 
-  const handleCreateMoment = () => {
-    if (!newContent.trim()) return;
-    const newMoment: Moment = {
-      id: `my-${Date.now()}`,
-      author: { name: myName, handle: `@${myName.toLowerCase().replace(/\s/g, '')}`, avatarId: myAvatar },
-      content: newContent.trim(),
-      timestamp: 'Just now',
-      likes: 0, comments: [], reposts: 0,
-      isLiked: false, isReposted: false, isMine: true,
-    };
-    setMoments(prev => [newMoment, ...prev]);
-    setNewContent('');
-    setShowCreate(false);
+  const handleCreateMoment = async () => {
+    if (!newContent.trim() || isPosting) return;
+    setIsPosting(true);
+    try {
+      const newMoment = await momentsService.createMoment({ content: newContent.trim() });
+      setMoments((prev) => [newMoment, ...prev]);
+      setNewContent('');
+      setShowCreate(false);
+    } catch (error) {
+      console.error('Failed to create moment', error);
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   // ─── Comment Sheet (current moment) ─────────────────
-  const commentMoment = moments.find(m => m.id === commentMomentId);
+  const commentMoment = moments.find((m) => m.id === commentMomentId);
 
   // ─── Header ─────────────────────────────────────────
   const listHeader = (
     <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
       <View style={styles.headerRow}>
         <View>
-          <Heading level={1} style={styles.title}>Home</Heading>
+          <Heading level={1} style={styles.title}>
+            Home
+          </Heading>
           <Text style={styles.subtitle}>See what others are thinking</Text>
         </View>
-        <Pressable
-          style={styles.myMomentsBtn}
-          onPress={() => router.push('/(app)/my-moments')}
-        >
+        <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
           <Ionicons name="person" size={14} color="rgba(255,255,255,0.6)" />
           <Text style={styles.myMomentsBtnText}>My Moments</Text>
         </Pressable>
@@ -320,29 +254,37 @@ export default function HomeScreen() {
         <FlatList
           data={moments}
           keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor="rgba(255,255,255,0.5)"
+            />
+          }
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
               <MomentItem
                 item={item}
                 onLike={() => toggleLike(item.id)}
                 onComment={() => openComments(item.id)}
-                onRepost={() => handleRepost(item.id)}
                 onShare={() => handleShare(item)}
               />
             </Animated.View>
           )}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.2)" />
-              <Text style={styles.emptyText}>No moments yet</Text>
-            </View>
+            !isLoading ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.2)" />
+                <Text style={styles.emptyText}>No moments yet</Text>
+              </View>
+            ) : null
           }
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
-        
+
         {/* FAB */}
         <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.fabContainer}>
           <Pressable style={styles.fab} onPress={() => setShowCreate(true)}>
@@ -356,11 +298,16 @@ export default function HomeScreen() {
           <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
             <BlurView intensity={60} tint="dark" style={styles.overlay}>
               <Pressable style={styles.overlayDismiss} onPress={() => setShowCreate(false)} />
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ width: '100%' }}
+              >
                 <Animated.View entering={SlideInDown.duration(350)} style={styles.createSheet}>
                   <View style={styles.sheetHandle} />
-                  <Heading level={2} style={styles.sheetTitle}>New Moment</Heading>
-                  <Text style={styles.sheetSubtitle}>Share what's on your mind</Text>
+                  <Heading level={2} style={styles.sheetTitle}>
+                    New Moment
+                  </Heading>
+                  <Text style={styles.sheetSubtitle}>Share what&apos;s on your mind</Text>
 
                   <View style={styles.createAuthorRow}>
                     <Avatar avatarId={myAvatar} alias={myName} size={36} />
@@ -381,15 +328,22 @@ export default function HomeScreen() {
                   <View style={styles.createFooter}>
                     <Text style={styles.charCount}>{newContent.length}/280</Text>
                     <Pressable
-                      style={[styles.postBtn, !newContent.trim() && styles.postBtnDisabled]}
+                      style={[
+                        styles.postBtn,
+                        (!newContent.trim() || isPosting) && styles.postBtnDisabled,
+                      ]}
                       onPress={handleCreateMoment}
-                      disabled={!newContent.trim()}
+                      disabled={!newContent.trim() || isPosting}
                     >
                       <LinearGradient
-                        colors={newContent.trim() ? colors.primaryGradient : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']}
+                        colors={
+                          newContent.trim() && !isPosting
+                            ? colors.primaryGradient
+                            : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']
+                        }
                         style={StyleSheet.absoluteFillObject}
                       />
-                      <Text style={styles.postBtnText}>Post</Text>
+                      <Text style={styles.postBtnText}>{isPosting ? 'Posting...' : 'Post'}</Text>
                     </Pressable>
                   </View>
                 </Animated.View>
@@ -403,11 +357,16 @@ export default function HomeScreen() {
           <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
             <BlurView intensity={60} tint="dark" style={styles.overlay}>
               <Pressable style={styles.overlayDismiss} onPress={() => setCommentMomentId(null)} />
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ width: '100%' }}
+              >
                 <Animated.View entering={SlideInDown.duration(350)} style={styles.commentSheet}>
                   <View style={styles.sheetHandle} />
                   <View style={styles.commentSheetHeader}>
-                    <Heading level={3} style={styles.sheetTitle}>Comments</Heading>
+                    <Heading level={3} style={styles.sheetTitle}>
+                      Comments
+                    </Heading>
                     <Pressable onPress={() => setCommentMomentId(null)}>
                       <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
                     </Pressable>
@@ -430,7 +389,11 @@ export default function HomeScreen() {
                         <View style={styles.commentBody}>
                           <View style={styles.commentNameRow}>
                             <Text style={styles.commentAuthor}>{c.author}</Text>
-                            <Text style={styles.commentTime}>{c.timestamp}</Text>
+                            <Text style={styles.commentTime}>
+                              {c.timestamp
+                                ? new Date(c.timestamp).toLocaleDateString()
+                                : 'Just now'}
+                            </Text>
                           </View>
                           <Text style={styles.commentText}>{c.text}</Text>
                         </View>
@@ -452,8 +415,11 @@ export default function HomeScreen() {
                     />
                     <Pressable
                       onPress={postComment}
-                      disabled={!commentText.trim()}
-                      style={[styles.commentSendBtn, !commentText.trim() && { opacity: 0.3 }]}
+                      disabled={!commentText.trim() || isCommenting}
+                      style={[
+                        styles.commentSendBtn,
+                        (!commentText.trim() || isCommenting) && { opacity: 0.3 },
+                      ]}
                     >
                       <Ionicons name="send" size={20} color={colors.primary} />
                     </Pressable>
@@ -463,7 +429,6 @@ export default function HomeScreen() {
             </BlurView>
           </Animated.View>
         )}
-
       </SafeAreaView>
     </View>
   );
@@ -503,24 +468,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   myMomentsBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
-
-  // Repost credit
-  repostCreditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 10,
-    paddingLeft: 4,
-  },
-  repostCreditText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-  },
-  repostCreditAuthor: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#10B981',
-  },
 
   // Moment card
   momentCard: {
@@ -564,10 +511,17 @@ const styles = StyleSheet.create({
   // FAB
   fabContainer: { position: 'absolute', bottom: spacing['2xl'], right: spacing['2xl'] },
   fab: {
-    width: 60, height: 60, borderRadius: 30,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   // Overlay shared
@@ -575,13 +529,21 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   overlayDismiss: { ...StyleSheet.absoluteFillObject },
   sheetHandle: {
-    width: 36, height: 4, borderRadius: 2,
+    width: 36,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignSelf: 'center',
     marginBottom: spacing.lg,
   },
   sheetTitle: { fontSize: 22, fontWeight: '800', color: 'white', textAlign: 'center' },
-  sheetSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 4, marginBottom: spacing.xl },
+  sheetSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: spacing.xl,
+  },
 
   // Create sheet — dark theme
   createSheet: {
@@ -629,7 +591,6 @@ const styles = StyleSheet.create({
   postBtnDisabled: { opacity: 0.5 },
   postBtnText: { fontSize: 15, fontWeight: '700', color: 'white' },
 
-  // Comment sheet — dark theme
   commentSheet: {
     backgroundColor: SHEET_BG,
     borderTopLeftRadius: 24,

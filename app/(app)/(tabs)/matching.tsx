@@ -2,14 +2,26 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, View, Dimensions, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeIn, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, runOnJS, interpolate, withDelay, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  runOnJS,
+  interpolate,
+  withDelay,
+  SlideInDown,
+  SlideOutDown,
+} from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { Text, Heading } from '@/components/ui/Text';
-import { Button } from '@/components/ui/Button';
 import { MoodChip } from '@/components/ui/MoodChip';
 import { MOOD_OPTIONS, MoodType } from '@/constants/moods';
 import { Routes } from '@/constants/routes';
@@ -30,6 +42,11 @@ export default function MatchingScreen() {
 
   const handleShowMoodSelector = () => {
     setShowMoodSelector(true);
+  };
+
+  // Chats Button
+  const handleOpenChats = () => {
+    router.push('/(app)/chats'); // Assuming chats/index.tsx will be created
   };
 
   // Slide button logic
@@ -74,59 +91,70 @@ export default function MatchingScreen() {
       withSequence(
         withTiming(-8, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
         withTiming(8, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
     float2.value = withRepeat(
       withSequence(
         withTiming(8, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
         withTiming(-8, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.ease) })
+        withTiming(0, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
 
     chevronAnim.value = withRepeat(
       withTiming(1, { duration: 1500, easing: Easing.linear }),
       -1,
-      false
+      false,
     );
-  }, []);
+  }, [chevronAnim, float1, float2]);
 
-  const getChevronStyle = (index: number) => {
+  const useChevronStyle = (index: number) => {
     return useAnimatedStyle(() => {
       // Offset each chevron's animation phase so they light up sequentially
       const phase = (chevronAnim.value - index * 0.2 + 1) % 1;
       return {
         opacity: interpolate(phase, [0, 0.5, 1], [0.1, 1, 0.1]),
-        transform: [{ translateX: interpolate(phase, [0, 1], [0, 10]) }]
+        transform: [{ translateX: interpolate(phase, [0, 1], [0, 10]) }],
       };
     });
   };
 
-  const chevronStyle1 = getChevronStyle(0);
-  const chevronStyle2 = getChevronStyle(1);
-  const chevronStyle3 = getChevronStyle(2);
+  const chevronStyle1 = useChevronStyle(0);
+  const chevronStyle2 = useChevronStyle(1);
+  const chevronStyle3 = useChevronStyle(2);
 
-  const animatedStyle1 = useAnimatedStyle(() => ({ transform: [{ translateY: float1.value }, { rotate: '-12deg' }] }));
-  const animatedStyle2 = useAnimatedStyle(() => ({ transform: [{ translateY: float2.value }, { rotate: '15deg' }] }));
+  const animatedStyle1 = useAnimatedStyle(() => ({
+    transform: [{ translateY: float1.value }, { rotate: '-12deg' }],
+  }));
+  const animatedStyle2 = useAnimatedStyle(() => ({
+    transform: [{ translateY: float2.value }, { rotate: '15deg' }],
+  }));
 
   return (
     <GestureHandlerRootView style={styles.mainContainer}>
-      <LinearGradient
-        colors={['#18181B', '#000000']}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
+
+      {/* Chats Button */}
+      <Pressable onPress={handleOpenChats} style={styles.chatsBtn}>
+        <Ionicons name="chatbubbles-outline" size={24} color="white" />
+      </Pressable>
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
-          
           {/* Top Title */}
-          <Animated.View entering={FadeIn.duration(600).easing(Easing.out(Easing.quad))} style={styles.header}>
+          <Animated.View
+            entering={FadeIn.duration(600).easing(Easing.out(Easing.quad))}
+            style={styles.header}
+          >
             <View style={styles.headerLeft} />
-            <Heading level={1} style={styles.mainTitle}>Heylo</Heading>
+            <Heading level={1} style={styles.mainTitle}>
+              Heylo
+            </Heading>
             <Pressable onPress={() => router.push('/(app)/history')} style={styles.headerRight}>
               <Ionicons name="chatbubbles-outline" size={28} color="white" />
             </Pressable>
@@ -134,23 +162,32 @@ export default function MatchingScreen() {
 
           {/* Hero Cards Area */}
           <Animated.View entering={FadeIn.duration(800).delay(200)} style={styles.heroArea}>
-            
             {/* Left Card */}
             <Animated.View style={[styles.card, styles.leftCard, animatedStyle1]}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80' }} 
-                style={styles.cardImage} 
+              <Image
+                source={{
+                  uri: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80',
+                }}
+                style={styles.cardImage}
               />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                style={styles.cardGradientOverlay}
+              />
             </Animated.View>
 
             {/* Right Card */}
             <Animated.View style={[styles.card, styles.rightCard, animatedStyle2]}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80' }} 
-                style={styles.cardImage} 
+              <Image
+                source={{
+                  uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80',
+                }}
+                style={styles.cardImage}
               />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                style={styles.cardGradientOverlay}
+              />
             </Animated.View>
 
             {/* Floating Badges */}
@@ -163,7 +200,6 @@ export default function MatchingScreen() {
             <View style={[styles.floatingBadge, styles.badgeRight]}>
               <Ionicons name="gift" size={24} color="white" />
             </View>
-
           </Animated.View>
 
           {/* Typography */}
@@ -173,7 +209,8 @@ export default function MatchingScreen() {
               <Text style={styles.highlightText}>Match</Text> Instantly
             </Text>
             <Text style={styles.subtitleText}>
-              Like profiles you're interested in and get matched instantly when the feeling is mutual.
+              Like profiles you&apos;re interested in and get matched instantly when the feeling is
+              mutual.
             </Text>
           </Animated.View>
 
@@ -181,7 +218,7 @@ export default function MatchingScreen() {
           <Animated.View entering={FadeIn.duration(600).delay(600)} style={styles.actionSection}>
             <View style={styles.customButton}>
               <Text style={styles.buttonText}>Slide to Find Match</Text>
-              
+
               <View style={styles.chevronGroup}>
                 <Animated.View style={chevronStyle1}>
                   <Ionicons name="chevron-forward-outline" size={20} color="white" />
@@ -210,15 +247,35 @@ export default function MatchingScreen() {
               style={styles.blurOverlayWrapper}
             >
               <BlurView intensity={80} tint="dark" style={styles.blurOverlay}>
-                <Pressable style={styles.blurOverlayClose} onPress={() => setShowMoodSelector(false)} />
+                <Pressable
+                  style={styles.blurOverlayClose}
+                  onPress={() => setShowMoodSelector(false)}
+                />
                 <View style={styles.moodSheet}>
                   <View style={styles.sheetHandle} />
-                  <Heading level={2} style={styles.sheetTitle}>What's your vibe?</Heading>
-                  <Text style={styles.sheetSubtitle}>Choose the kind of connection you're looking for right now.</Text>
-                  
+                  <Heading level={2} style={styles.sheetTitle}>
+                    What&apos;s your vibe?
+                  </Heading>
+                  <Text style={styles.sheetSubtitle}>
+                    Choose the kind of connection you&apos;re looking for right now.
+                  </Text>
+
                   <View style={styles.moodGrid}>
-                    <Pressable onPress={() => setSelectedMood('any')} style={[styles.anyMoodChip, selectedMood === 'any' && styles.anyMoodChipSelected]}>
-                      <Text style={[styles.anyMoodText, selectedMood === 'any' && styles.anyMoodTextSelected]}>✨ Surprise Me</Text>
+                    <Pressable
+                      onPress={() => setSelectedMood('any')}
+                      style={[
+                        styles.anyMoodChip,
+                        selectedMood === 'any' && styles.anyMoodChipSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.anyMoodText,
+                          selectedMood === 'any' && styles.anyMoodTextSelected,
+                        ]}
+                      >
+                        ✨ Surprise Me
+                      </Text>
                     </Pressable>
                     {MOOD_OPTIONS.map((mood) => (
                       <MoodChip
@@ -245,7 +302,6 @@ export default function MatchingScreen() {
               </BlurView>
             </Animated.View>
           )}
-
         </View>
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -284,6 +340,26 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
+  chatsBtn: {
+    position: 'absolute',
+    top: 60, // Adjust for status bar
+    right: 24,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  glowCircle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.white,
+    letterSpacing: 1,
+  },
   mainTitle: {
     fontSize: 32,
     fontWeight: '700',
@@ -313,18 +389,18 @@ const styles = StyleSheet.create({
   cardGradient: {
     flex: 1,
   },
-  cardImage: { 
-    flex: 1, 
-    width: '100%', 
-    height: '100%', 
-    resizeMode: 'cover' 
+  cardImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  cardGradientOverlay: { 
-    position: 'absolute', 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
-    height: '40%' 
+  cardGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
   },
   leftCard: {
     left: '10%',

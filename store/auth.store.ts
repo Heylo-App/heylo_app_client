@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 
 import type { AnonymousProfile } from '@/types/auth';
-import { persistentStorage } from '@/utils/storage';
+import { persistentStorage, secureStorage } from '@/utils/storage';
 import { StorageKeys } from '@/constants/storage';
+import { apiClient } from '@/api/client';
+import { endpoints } from '@/api/endpoints';
 
 interface AuthState {
   user: AnonymousProfile | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isOnboarded: boolean;
@@ -18,6 +21,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  token: null,
   isAuthenticated: false,
   isLoading: true,
   isOnboarded: false,
@@ -37,15 +41,49 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: async () => {
-    // Demo mode: no backend, just clear the loading state
-    set({ isLoading: false });
+    try {
+      const token = await secureStorage.getToken();
+
+      if (!token) {
+        // No saved token — user needs to log in
+        set({ isLoading: false });
+        return;
+      }
+
+      // Token exists — try to restore the session by fetching the user profile
+      set({ token });
+
+      const { data } = await apiClient.get(endpoints.auth.me);
+      const user: AnonymousProfile = data.data;
+
+      set({
+        user,
+        token,
+        isAuthenticated: true,
+        isOnboarded: user.isOnboarded ?? false,
+        isLoading: false,
+      });
+    } catch {
+      // Token is expired/invalid — clear everything and send to login
+      await secureStorage.clearTokens();
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isOnboarded: false,
+        isLoading: false,
+      });
+    }
   },
 
-  reset: () =>
+  reset: async () => {
+    await secureStorage.clearTokens();
     set({
       user: null,
+      token: null,
       isAuthenticated: false,
       isOnboarded: false,
       isLoading: false,
-    }),
+    });
+  },
 }));

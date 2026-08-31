@@ -3,7 +3,12 @@ import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeIn, SlideInDown, SlideOutDown, SlideOutLeft, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  SlideOutDown,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
@@ -16,84 +21,104 @@ import { MOOD_OPTIONS, MoodType } from '@/constants/moods';
 import { useAuthStore } from '@/store/auth.store';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
+import { usersService, ActiveUser } from '@/services/users.service';
+import { socketService } from '@/services/socket.service';
 
 const { height } = Dimensions.get('window');
 
-const MOCK_PROFILES = [
-  { id: '1', alias: 'Luna', avatarId: 'avatar-4', moodId: 'excited', vibe: 'Looking for someone to chat about space and stars 🌌' },
-  { id: '2', alias: 'Shadow', avatarId: 'avatar-7', moodId: 'reflective', vibe: 'Deep conversations about life and books 📚' },
-  { id: '3', alias: 'Nova', avatarId: 'avatar-2', moodId: 'happy', vibe: 'Just chilling, want to listen to some music together 🎵' },
-  { id: '4', alias: 'Zephyr', avatarId: 'avatar-9', moodId: 'calm', vibe: 'Need a quiet space to co-work ☕' },
-  { id: '5', alias: 'Echo', avatarId: 'avatar-5', moodId: 'hopeful', vibe: "Excited about the future, let's share dreams ✨" },
-];
-
-const MOCK_REQUESTS = [
-  { id: 'req1', alias: 'Orion', avatarId: 'avatar-8', moodId: 'lonely', message: 'Hey, saw your vibe and would love to connect!' },
-  { id: 'req2', alias: 'Lyra', avatarId: 'avatar-3', moodId: 'happy', message: 'Music sounds great right now!' },
-];
-
 export default function ExploreScreen() {
   const { user } = useAuthStore();
-  
+  const router = useRouter();
+
   // States
   const [isActive, setIsActive] = useState(false);
   const [showActiveSetup, setShowActiveSetup] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
-  const [profiles, setProfiles] = useState(MOCK_PROFILES);
-  
+
   // Setup forms
   const [myMood, setMyMood] = useState<MoodType | null>(null);
   const [myVibe, setMyVibe] = useState('');
-  
-  // Active state profile
-  const [activeProfile, setActiveProfile] = useState<{ moodId: MoodType, vibe: string } | null>(null);
+
+  // Real data
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+
+  const fetchActiveUsers = async () => {
+    try {
+      const users = await usersService.getActiveUsers();
+      setActiveUsers(users);
+    } catch (err) {
+      console.error('Failed to fetch active users', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveUsers();
+
+    const unsubUpdate = socketService.onActiveUsersUpdated(() => {
+      fetchActiveUsers();
+    });
+
+    const unsubReq = socketService.onReceiveConnectRequest((req) => {
+      setRequests((prev) => [req, ...prev]);
+      setShowRequests(true);
+    });
+
+    const unsubAccept = socketService.onConnectRequestAccepted(({ chatId }) => {
+      router.push(`/(app)/chat/${chatId}`);
+    });
+
+    return () => {
+      unsubUpdate();
+      unsubReq();
+      unsubAccept();
+    };
+  }, [router]);
 
   const handleToggleActive = (val: boolean) => {
     if (val) {
       setShowActiveSetup(true);
     } else {
       setIsActive(false);
-      setActiveProfile(null);
+      socketService.toggleActive(user!.id, '', '', false);
     }
   };
 
   const handleMakeActive = () => {
     if (myMood && myVibe) {
-      setActiveProfile({ moodId: myMood, vibe: myVibe });
       setIsActive(true);
       setShowActiveSetup(false);
+      socketService.toggleActive(user!.id, myMood, myVibe, true);
     } else {
       alert('Please select a mood and enter a vibe.');
     }
   };
 
-  const handleSkip = (profileId: string) => {
-    setProfiles((prev) => prev.filter((p) => p.id !== profileId));
-  };
-
   const renderActiveDashboard = () => {
-    if (!activeProfile) return null;
-    const mood = MOOD_OPTIONS.find((m) => m.id === activeProfile.moodId) || MOOD_OPTIONS[0];
+    if (!isActive || !myMood) return null;
+    const mood = MOOD_OPTIONS.find((m) => m.id === myMood) || MOOD_OPTIONS[0];
 
     return (
       <Animated.View entering={FadeInDown.duration(600)} style={styles.dashboardCard}>
-        <LinearGradient 
-          colors={['rgba(255, 45, 85, 0.12)', 'rgba(255, 45, 85, 0.03)']} 
-          style={StyleSheet.absoluteFillObject} 
+        <LinearGradient
+          colors={['rgba(255, 45, 85, 0.12)', 'rgba(255, 45, 85, 0.03)']}
+          style={StyleSheet.absoluteFillObject}
         />
         <View style={styles.dashboardInner}>
           <View style={styles.cardTopRow}>
             <Avatar avatarId={user?.avatarId || 'avatar-1'} alias={user?.alias} size={44} />
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Heading level={3} style={styles.alias}>{user?.alias || 'Me'}</Heading>
+              <Heading level={3} style={styles.alias}>
+                {user?.alias || 'Me'}
+              </Heading>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                 <PulseDot color={colors.primary} />
-                <Text style={styles.dashStatusText}>Active & Visible</Text>
+                <Text style={styles.dashStatusText}>Active & Visible ({mood.emoji})</Text>
               </View>
             </View>
           </View>
 
-          <Text style={styles.vibeText}>"{activeProfile.vibe}"</Text>
+          <Text style={styles.vibeText}>&quot;{myVibe}&quot;</Text>
 
           <Pressable onPress={() => setShowRequests(true)} style={styles.dashRequestsBtn}>
             <LinearGradient
@@ -103,9 +128,9 @@ export default function ExploreScreen() {
               style={styles.dashRequestsGradient}
             >
               <Text style={styles.dashRequestsText}>View Requests</Text>
-              {MOCK_REQUESTS.length > 0 && (
+              {requests.length > 0 && (
                 <View style={styles.dashRequestsBadge}>
-                  <Text style={styles.dashRequestsBadgeText}>{MOCK_REQUESTS.length}</Text>
+                  <Text style={styles.dashRequestsBadgeText}>{requests.length}</Text>
                 </View>
               )}
             </LinearGradient>
@@ -115,20 +140,21 @@ export default function ExploreScreen() {
     );
   };
 
-  const renderProfileCard = ({ item, index }: { item: typeof MOCK_PROFILES[0], index: number }) => (
-    <ProfileCard key={item.id} item={item} index={index} onSkip={handleSkip} />
+  const renderProfileCard = ({ item, index }: { item: ActiveUser; index: number }) => (
+    <ProfileCard key={item._id} item={item} index={index} myUserId={user!.id} />
   );
 
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Header */}
         <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
           <View style={styles.headerTop}>
-            <Heading level={1} style={styles.title}>Explore</Heading>
-            
+            <Heading level={1} style={styles.title}>
+              Explore
+            </Heading>
+
             <View style={styles.headerRight}>
               {/* Active Toggle */}
               <View style={styles.activeToggleContainer}>
@@ -148,25 +174,41 @@ export default function ExploreScreen() {
 
         {/* Feed */}
         <FlatList
-          data={profiles}
-          keyExtractor={(item) => item.id}
+          data={activeUsers}
+          keyExtractor={(item) => item._id}
           ListHeaderComponent={renderActiveDashboard()}
           renderItem={renderProfileCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 40 }}>
+              <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.2)" />
+              <Text style={{ color: 'rgba(255,255,255,0.4)', marginTop: 12 }}>
+                No active users right now.
+              </Text>
+            </View>
+          }
         />
       </SafeAreaView>
 
       {/* Setup Active Modal */}
       {showActiveSetup && (
-        <Animated.View entering={FadeInDown.duration(300)} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          exiting={SlideOutDown.duration(300)}
+          style={styles.overlayWrapper}
+        >
           <BlurView intensity={80} tint="dark" style={styles.overlay}>
             <Pressable style={styles.overlayClose} onPress={() => setShowActiveSetup(false)} />
             <View style={styles.sheetContent}>
               <View style={styles.sheetHandle} />
-              <Heading level={2} style={styles.sheetTitle}>Go Active</Heading>
-              <Text style={styles.sheetSubtitle}>Let others know what vibe you're bringing.</Text>
-              
+              <Heading level={2} style={styles.sheetTitle}>
+                Go Active
+              </Heading>
+              <Text style={styles.sheetSubtitle}>
+                Let others know what vibe you&apos;re bringing.
+              </Text>
+
               <Text style={styles.inputLabel}>SELECT YOUR MOOD</Text>
               <View style={styles.moodGrid}>
                 {MOOD_OPTIONS.map((mood) => (
@@ -188,7 +230,7 @@ export default function ExploreScreen() {
                 onChangeText={setMyVibe}
                 maxLength={60}
               />
-              
+
               <Button
                 title="Make me Active"
                 size="lg"
@@ -202,101 +244,156 @@ export default function ExploreScreen() {
 
       {/* Requests Modal */}
       {showRequests && (
-        <Animated.View entering={FadeInDown.duration(300)} exiting={SlideOutDown.duration(300)} style={styles.overlayWrapper}>
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          exiting={SlideOutDown.duration(300)}
+          style={styles.overlayWrapper}
+        >
           <BlurView intensity={80} tint="dark" style={styles.overlay}>
             <Pressable style={styles.overlayClose} onPress={() => setShowRequests(false)} />
             <View style={[styles.sheetContent, { maxHeight: height * 0.85 }]}>
               <View style={styles.sheetHandle} />
-              <Heading level={2} style={styles.sheetTitle}>Requests</Heading>
-              <Text style={styles.sheetSubtitle}>People who want to match with you</Text>
-              
+              <Heading level={2} style={styles.sheetTitle}>
+                Requests
+              </Heading>
+              <Text style={styles.sheetSubtitle}>People who want to connect with you</Text>
+
               <FlatList
-                data={MOCK_REQUESTS}
+                data={requests}
                 keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing['4xl'] }}
-                renderItem={({ item }) => {
-                  const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
-                  return (
-                    <View style={styles.requestCard}>
-                      <View style={styles.requestTopRow}>
-                        <Avatar avatarId={item.avatarId} alias={item.alias} size={40} />
-                        <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                          <Heading level={3} style={{ fontSize: 16, color: 'white' }}>{item.alias}</Heading>
-                          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{mood.label} {mood.emoji}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.requestMsg}>"{item.message}"</Text>
-                      <View style={styles.requestActions}>
-                        <Pressable onPress={() => alert('Declined')} style={styles.reqBtnDecline}>
-                          <Text style={styles.reqBtnDeclineText}>Decline</Text>
-                        </Pressable>
-                        <Pressable onPress={() => alert('Accepted! Redirecting to chat...')} style={styles.reqBtnAccept}>
-                          <Text style={styles.reqBtnAcceptText}>Accept</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  );
-                }}
+                ListEmptyComponent={
+                  <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                    No requests right now.
+                  </Text>
+                }
+                renderItem={({ item }) => (
+                  <RequestCard
+                    item={item}
+                    onAccept={() => {
+                      socketService.acceptConnectRequest(item.id);
+                      setRequests((prev) => prev.filter((r) => r.id !== item.id));
+                    }}
+                    onDecline={() => {
+                      socketService.declineConnectRequest(item.id);
+                      setRequests((prev) => prev.filter((r) => r.id !== item.id));
+                    }}
+                  />
+                )}
               />
             </View>
           </BlurView>
         </Animated.View>
       )}
-
     </View>
   );
 }
 
-const ProfileCard = ({ item, index, onSkip }: { item: typeof MOCK_PROFILES[0], index: number, onSkip: (id: string) => void }) => {
+const RequestCard = ({
+  item,
+  onAccept,
+  onDecline,
+}: {
+  item: any;
+  onAccept: () => void;
+  onDecline: () => void;
+}) => {
   const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(15);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
+    // Calculate remaining time based on expiresAt
+    const updateTime = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor((new Date(item.expiresAt).getTime() - Date.now()) / 1000),
+      );
+      setTimeLeft(remaining);
+      if (remaining === 0) onDecline();
+    };
+
+    updateTime();
+    timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft]);
-
-  const handleConnect = () => {
-    if (timeLeft === 0) {
-      setTimeLeft(15);
-    }
-  };
-
-  const isConnecting = timeLeft > 0;
+  }, [item.expiresAt, onDecline]);
 
   return (
-    <Animated.View 
-      entering={FadeInDown.duration(500).delay(index * 50)} 
-      exiting={SlideOutLeft.duration(300)}
+    <View style={styles.requestCard}>
+      {/* 15s Progress bar */}
+      <View style={styles.progressBarBg}>
+        <Animated.View style={[styles.progressBarFill, { width: `${(timeLeft / 15) * 100}%` }]} />
+      </View>
+
+      <View style={[styles.requestTopRow, { marginTop: 8 }]}>
+        <Avatar avatarId={item.avatarId} alias={item.alias} size={40} />
+        <View style={{ flex: 1, marginLeft: spacing.sm }}>
+          <Heading level={3} style={{ fontSize: 16, color: 'white' }}>
+            {item.alias}
+          </Heading>
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+            {mood.label} {mood.emoji}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.requestActions}>
+        <Pressable onPress={onDecline} style={styles.reqBtnDecline}>
+          <Text style={styles.reqBtnDeclineText}>Decline</Text>
+        </Pressable>
+        <Pressable onPress={onAccept} style={styles.reqBtnAccept}>
+          <Text style={styles.reqBtnAcceptText}>Accept ({timeLeft}s)</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const ProfileCard = ({
+  item,
+  index,
+  myUserId,
+}: {
+  item: ActiveUser;
+  index: number;
+  myUserId: string;
+}) => {
+  const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
+  const [requested, setRequested] = useState(false);
+
+  const handleConnect = () => {
+    socketService.sendConnectRequest(myUserId, item.userId._id);
+    setRequested(true);
+    setTimeout(() => setRequested(false), 15000); // Reset button after 15s timeout
+  };
+
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(500).delay(index * 50)}
       layout={LinearTransition.springify()}
       style={styles.card}
     >
       <View style={styles.cardTopRow}>
-        <Avatar avatarId={item.avatarId} alias={item.alias} size={44} />
+        <Avatar avatarId={item.userId.avatarId} alias={item.userId.alias} size={44} />
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <Heading level={3} style={styles.alias}>{item.alias}</Heading>
-          <Text style={styles.cardMoodLabel}>{mood.label} {mood.emoji}</Text>
+          <Heading level={3} style={styles.alias}>
+            {item.userId.alias}
+          </Heading>
+          <Text style={styles.cardMoodLabel}>
+            {mood.label} {mood.emoji}
+          </Text>
         </View>
       </View>
 
-      <Text style={styles.vibeText}>"{item.vibe}"</Text>
+      <Text style={styles.vibeText}>&quot;{item.vibe}&quot;</Text>
 
       <View style={styles.cardActions}>
-        <Pressable style={styles.skipBtn} onPress={() => onSkip(item.id)}>
-          <Text style={styles.skipBtnText}>Skip</Text>
-        </Pressable>
-        <Pressable 
-          onPress={handleConnect} 
-          style={[styles.connectBtn, isConnecting && styles.connectingBtn]}
-          disabled={isConnecting}
+        <Pressable
+          onPress={handleConnect}
+          style={[styles.connectBtn, requested && styles.connectingBtn]}
+          disabled={requested}
         >
-          <Text style={styles.connectBtnText}>{isConnecting ? `Waiting... ${timeLeft}s` : 'Connect'}</Text>
+          <Text style={styles.connectBtnText}>{requested ? 'Request Sent' : 'Connect'}</Text>
         </Pressable>
       </View>
     </Animated.View>
@@ -354,7 +451,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: spacing.lg,
   },
-  
+
   // Active Dashboard Layout
   dashboardCard: {
     borderRadius: 24,
@@ -579,5 +676,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 14,
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
   },
 });

@@ -1,19 +1,29 @@
 import { MoodType } from '@/constants/moods';
 
+export interface Comment {
+  id: string;
+  author: string;
+  avatarId: string;
+  text: string;
+  timestamp: string;
+}
+
 export interface Moment {
   id: string;
-  authorId: string;
-  authorAlias: string;
-  authorAvatarId: string;
+  author: {
+    name: string;
+    handle: string;
+    avatarId: string;
+  };
   content: string;
-  mood: MoodType;
-  likesCount: number;
-  commentsCount: number;
+  timestamp: string;
+  likes: number;
+  comments: Comment[];
   isLiked: boolean;
-  createdAt: string;
+  isMine: boolean;
 }
 
 export interface CreateMomentPayload {
   content: string;
-  mood: MoodType;
+  mood?: MoodType;
 }

@@ -51,11 +51,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="rooms"
+        name="groups"
         options={{
-          title: 'Rooms',
+          title: 'Groups',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="mic-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
@@ -68,7 +68,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
     </Tabs>
   );
 }

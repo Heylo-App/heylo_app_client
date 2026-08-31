@@ -1,17 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable, 
-  TextInput, 
+import {
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  TextInput,
   FlatList,
-  Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Animated, { FadeIn, FadeInDown, FadeInUp, Easing, Layout } from 'react-native-reanimated';
+import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -19,119 +18,132 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
-import { useAuthSession } from '@/hooks/useAuth';
-
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'me' | 'them';
-  timestamp: string;
-}
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: '1',
-    text: "Hey there! The vibe check said we'd be a good match.",
-    sender: 'them',
-    timestamp: '10:00 AM'
-  },
-  {
-    id: '2',
-    text: "Hey! Haha yeah, I was just looking for someone to chat with.",
-    sender: 'me',
-    timestamp: '10:02 AM'
-  },
-  {
-    id: '3',
-    text: "Awesome. I love that this is totally anonymous. Takes the pressure off.",
-    sender: 'them',
-    timestamp: '10:05 AM'
-  }
-];
+import { useAuthStore } from '@/store/auth.store';
+import { socketService } from '@/services/socket.service';
+import { chatsService, ChatMessage, ChatParticipant } from '@/services/chats.service';
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuthSession();
-  
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const { id } = useLocalSearchParams<{ id: string }>(); // This is the chatId
+  const { user } = useAuthStore();
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
-  // Mock matched user details
-  const matchedUser = {
-    alias: 'QuietRiver',
-    avatarId: 'avatar-4',
-    mood: 'chill'
-  };
+  useEffect(() => {
+    // 1. Enter Chat - make inactive to avoid new requests
+    socketService.toggleActive(user!.id, '', '', false);
+
+    // 2. Load Messages
+    const loadMessages = async () => {
+      try {
+        const msgs = await chatsService.getMessages(id);
+        setMessages(msgs);
+
+        // Find other user from chat participants list. Since we only have chatId,
+        // we ideally need a GET /chats/:id endpoint, but for now we extract from the first message
+        // if it exists, or we could fetch the chats list to find it.
+        // We'll rely on the parent screen passing the other user, or fetch chats list.
+        const allChats = await chatsService.getChats();
+        const currentChat = allChats.find((c) => c._id === id);
+        if (currentChat) {
+          const participant = currentChat.participants.find((p) => p._id !== user?.id);
+          if (participant) setOtherUser(participant);
+        }
+      } catch (err) {
+        console.error('Failed to load messages', err);
+      }
+    };
+    loadMessages();
+
+    // 3. Socket events
+    socketService.joinChatRoom(id);
+
+    const unsubReceive = socketService.onReceiveChatMessage((msg) => {
+      if (msg.chatId === id) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    });
+
+    return () => {
+      socketService.leaveChatRoom(id);
+      unsubReceive();
+      // Make active again when leaving (optional: we just leave them inactive,
+      // the prompt says "make it inactive till the chat closes rest fine", but didn't say to auto-resume active state,
+      // it's safer to leave them inactive and let them manually toggle back).
+    };
+  }, [id, user]);
 
   const sendMessage = () => {
     if (!inputText.trim()) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
+    socketService.sendChatMessage({
+      chatId: id,
+      senderId: user!.id,
       text: inputText.trim(),
-      sender: 'me',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+      senderAlias: user?.alias,
+      senderAvatarId: user?.avatarId,
+    });
 
-    setMessages((prev) => [...prev, newMessage]);
     setInputText('');
-
-    // Simulate reply after 2 seconds
-    setTimeout(() => {
-      const replyMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "That's cool! Tell me more about it.",
-        sender: 'them',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages((prev) => [...prev, replyMessage]);
-    }, 2000);
   };
 
   useEffect(() => {
     // Scroll to bottom on new message
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      if (messages.length > 0) {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }
+    }, 200);
   }, [messages]);
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isMe = item.sender === 'me';
-    
+  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+    const isMe =
+      typeof item.senderId === 'string'
+        ? item.senderId === user?.id
+        : item.senderId._id === user?.id;
+
     return (
-      <Animated.View 
-        entering={FadeInUp.duration(400).delay(index * 100)}
+      <Animated.View
+        entering={FadeInUp.duration(400).delay(Math.min(index * 50, 500))}
         layout={Layout.springify().damping(16).stiffness(120)}
-        style={[
-          styles.messageRow,
-          isMe ? styles.messageRowMe : styles.messageRowThem
-        ]}
+        style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}
       >
         {!isMe && (
           <View style={styles.messageAvatar}>
-            <Avatar avatarId={matchedUser.avatarId} alias={matchedUser.alias} size={28} />
+            <Avatar
+              avatarId={otherUser?.avatarId || 'avatar-1'}
+              alias={otherUser?.alias}
+              size={28}
+            />
           </View>
         )}
-        
+
         <View style={styles.messageContent}>
-          <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}>
+          <View
+            style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}
+          >
             {isMe && (
-              <LinearGradient 
-                colors={colors.primaryGradient} 
-                style={StyleSheet.absoluteFillObject} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }} 
+              <LinearGradient
+                colors={colors.primaryGradient}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               />
             )}
-            <Text style={[styles.messageText, isMe ? styles.messageTextMe : styles.messageTextThem]}>
+            <Text
+              style={[styles.messageText, isMe ? styles.messageTextMe : styles.messageTextThem]}
+            >
               {item.text}
             </Text>
           </View>
           <Text style={[styles.timestamp, isMe ? styles.timestampMe : styles.timestampThem]}>
-            {item.timestamp}
+            {new Date(item.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
           </Text>
         </View>
       </Animated.View>
@@ -141,9 +153,9 @@ export default function ChatScreen() {
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
-      
+
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
@@ -153,15 +165,20 @@ export default function ChatScreen() {
             <Pressable onPress={() => router.back()} style={styles.iconBtn}>
               <Ionicons name="chevron-back" size={28} color="white" />
             </Pressable>
-            
+
             <View style={styles.headerProfile}>
               <View style={styles.headerAvatarWrapper}>
-                <Avatar avatarId={matchedUser.avatarId} alias={matchedUser.alias} size={40} />
+                <Avatar
+                  avatarId={otherUser?.avatarId || 'avatar-1'}
+                  alias={otherUser?.alias || '...'}
+                  size={40}
+                />
                 <View style={styles.onlineDot} />
               </View>
               <View>
-                <Heading level={3} style={styles.headerName}>{matchedUser.alias}</Heading>
-                <Text style={styles.headerMood}>feeling {matchedUser.mood}</Text>
+                <Heading level={3} style={styles.headerName}>
+                  {otherUser?.alias || 'Connecting...'}
+                </Heading>
               </View>
             </View>
 
@@ -174,7 +191,7 @@ export default function ChatScreen() {
           <FlatList
             ref={flatListRef}
             data={messages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item._id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesContainer}
             showsVerticalScrollIndicator={false}
@@ -186,7 +203,7 @@ export default function ChatScreen() {
             <Pressable style={styles.attachBtn}>
               <Ionicons name="add" size={24} color="rgba(255,255,255,0.6)" />
             </Pressable>
-            
+
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
@@ -199,30 +216,27 @@ export default function ChatScreen() {
               />
             </View>
 
-            <Animated.View style={inputText.trim() ? styles.sendBtnActiveWrapper : styles.sendBtnInactiveWrapper}>
-              <Pressable 
-                style={styles.sendBtn} 
-                onPress={sendMessage}
-                disabled={!inputText.trim()}
-              >
+            <Animated.View
+              style={inputText.trim() ? styles.sendBtnActiveWrapper : styles.sendBtnInactiveWrapper}
+            >
+              <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={!inputText.trim()}>
                 {inputText.trim() ? (
-                  <LinearGradient 
-                    colors={colors.primaryGradient} 
-                    style={StyleSheet.absoluteFillObject} 
-                    start={{ x: 0, y: 0 }} 
-                    end={{ x: 1, y: 1 }} 
+                  <LinearGradient
+                    colors={colors.primaryGradient}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                   />
                 ) : null}
-                <Ionicons 
-                  name="paper-plane" 
-                  size={20} 
-                  color={inputText.trim() ? "white" : "rgba(255,255,255,0.3)"} 
+                <Ionicons
+                  name="paper-plane"
+                  size={20}
+                  color={inputText.trim() ? 'white' : 'rgba(255,255,255,0.3)'}
                   style={{ marginLeft: 2 }} // center adjustment
                 />
               </Pressable>
             </Animated.View>
           </View>
-
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -233,7 +247,7 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#000' },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
-  
+
   // Header
   header: {
     flexDirection: 'row',
