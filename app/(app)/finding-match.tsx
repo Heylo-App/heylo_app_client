@@ -69,8 +69,8 @@ export default function FindingMatchScreen() {
     if (!user?.id) return;
     matchedRef.current = false;
 
-    // Emit the find_match event
-    socketService.findMatch(user.id, mood || 'any');
+    // Register listeners FIRST, before emitting, to avoid race condition
+    // where server responds before listener is ready
 
     // Listen for how many requests were sent
     const unsubResult = socketService.onFindMatchResult(({ sentCount: count }) => {
@@ -93,10 +93,13 @@ export default function FindingMatchScreen() {
       }, 800);
     });
 
+    // NOW emit the find_match event (listeners are already active)
+    socketService.findMatch(user.id, mood || 'any');
+
     // 15-second timeout: if no match by then, show "no match"
     const timeout = setTimeout(() => {
       if (!matchedRef.current) {
-        setStatus((prev) => (prev === 'sent' ? 'no_match' : prev));
+        setStatus((prev) => (prev === 'sent' || prev === 'searching' ? 'no_match' : prev));
       }
     }, 15000);
 

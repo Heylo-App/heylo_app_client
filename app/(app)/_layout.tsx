@@ -13,9 +13,10 @@ export default function AppLayout() {
   useEffect(() => {
     if (isAuthenticated && token && user?.id) {
       socketService.connect(token);
-      setTimeout(() => {
+      // Register user room once socket is actually connected
+      socketService.onConnect(() => {
         socketService.registerUser(user.id);
-      }, 500);
+      });
     }
     return () => {
       socketService.disconnect();

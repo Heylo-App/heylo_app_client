@@ -52,6 +52,17 @@ class SocketService {
     });
   }
 
+  onConnect(callback: () => void) {
+    if (!this.socket) return;
+    if (this.socket.connected) {
+      // Already connected, fire immediately
+      callback();
+    } else {
+      // Wait for the connect event
+      this.socket.once('connect', callback);
+    }
+  }
+
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
