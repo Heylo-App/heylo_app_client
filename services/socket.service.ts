@@ -9,6 +9,8 @@ type SocketEvents = {
   active_users_updated: () => void;
   receive_connect_request: (payload: any) => void;
   connect_request_accepted: (payload: { chatId: string }) => void;
+  connect_request_error: (payload: { requestId?: string; message: string }) => void;
+  find_match_result: (payload: { sentCount: number }) => void;
   receive_chat_message: (payload: any) => void;
   'moment:created': (payload: any) => void;
   'moment:updated': (payload: { id: string; likes: number; comments: any[] }) => void;
@@ -130,6 +132,22 @@ class SocketService {
   onConnectRequestAccepted(handler: (payload: { chatId: string }) => void) {
     this.on('connect_request_accepted', handler);
     return () => this.off('connect_request_accepted', handler);
+  }
+
+  onConnectRequestError(handler: (payload: { requestId?: string; message: string }) => void) {
+    this.on('connect_request_error', handler);
+    return () => this.off('connect_request_error', handler);
+  }
+
+  // ── Matching ────────────────────────────────────────────────────
+
+  findMatch(senderId: string, moodId: string) {
+    this.emit('find_match', { senderId, moodId });
+  }
+
+  onFindMatchResult(handler: (payload: { sentCount: number }) => void) {
+    this.on('find_match_result', handler);
+    return () => this.off('find_match_result', handler);
   }
 
   // ── 1-on-1 Chat ────────────────────────────────────────────────

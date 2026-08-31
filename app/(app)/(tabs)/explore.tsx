@@ -1,4 +1,13 @@
-import { StyleSheet, View, FlatList, Pressable, Switch, TextInput, Dimensions } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Pressable,
+  Switch,
+  TextInput,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -68,10 +77,18 @@ export default function ExploreScreen() {
       router.push(`/(app)/chat/${chatId}`);
     });
 
+    const unsubError = socketService.onConnectRequestError(({ requestId, message }) => {
+      Alert.alert('Connection Failed', message);
+      if (requestId) {
+        setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      }
+    });
+
     return () => {
       unsubUpdate();
       unsubReq();
       unsubAccept();
+      unsubError();
     };
   }, [router]);
 

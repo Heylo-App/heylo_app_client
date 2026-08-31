@@ -46,7 +46,7 @@ export default function MatchingScreen() {
 
   // Chats Button
   const handleOpenChats = () => {
-    router.push('/(app)/chats'); // Assuming chats/index.tsx will be created
+    router.push('/(app)/chats');
   };
 
   // Slide button logic
@@ -139,11 +139,6 @@ export default function MatchingScreen() {
     <GestureHandlerRootView style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
 
-      {/* Chats Button */}
-      <Pressable onPress={handleOpenChats} style={styles.chatsBtn}>
-        <Ionicons name="chatbubbles-outline" size={24} color="white" />
-      </Pressable>
-
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
           {/* Top Title */}
@@ -155,7 +150,7 @@ export default function MatchingScreen() {
             <Heading level={1} style={styles.mainTitle}>
               Heylo
             </Heading>
-            <Pressable onPress={() => router.push('/(app)/history')} style={styles.headerRight}>
+            <Pressable onPress={handleOpenChats} style={styles.headerRight}>
               <Ionicons name="chatbubbles-outline" size={28} color="white" />
             </Pressable>
           </Animated.View>
@@ -340,20 +335,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-  chatsBtn: {
-    position: 'absolute',
-    top: 60, // Adjust for status bar
-    right: 24,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
+
   glowCircle: {
     fontSize: 32,
     fontWeight: '700',

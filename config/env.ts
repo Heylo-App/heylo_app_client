@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 
 const extra = Constants.expoConfig?.extra ?? {};
 
-const ip = 'http://172.25.14.251';
+const ip = 'http://172.25.14.251:3000';
 
 export const env = {
   apiUrl: (extra.apiUrl as string) ?? process.env.EXPO_PUBLIC_API_URL ?? ip,
