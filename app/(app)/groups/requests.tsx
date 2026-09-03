@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { RequestsSkeleton } from '@/components/skeletons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -109,9 +110,7 @@ export default function GroupRequestsScreen() {
         </View>
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <RequestsSkeleton />
         ) : (
           <FlatList
             data={invites}

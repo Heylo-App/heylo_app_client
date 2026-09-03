@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
+import { GroupInfoSkeleton } from '@/components/skeletons';
 
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
@@ -144,8 +145,20 @@ export default function GroupInfoScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={styles.mainContainer}>
+        <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </Pressable>
+            <Heading level={2} style={styles.headerTitle}>
+              Group Info
+            </Heading>
+            <View style={{ width: 44 }} />
+          </View>
+          <GroupInfoSkeleton />
+        </SafeAreaView>
       </View>
     );
   }

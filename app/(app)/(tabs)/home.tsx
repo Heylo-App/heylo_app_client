@@ -33,6 +33,7 @@ import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 import { momentsService } from '@/services/moments.service';
 import type { Moment } from '@/types/moment';
+import { HomeSkeleton } from '@/components/skeletons';
 
 const SHEET_BG = '#111115';
 const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
@@ -273,12 +274,14 @@ export default function HomeScreen() {
           )}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
-            !isLoading ? (
+            isLoading ? (
+              <HomeSkeleton />
+            ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.2)" />
                 <Text style={styles.emptyText}>No moments yet</Text>
               </View>
-            ) : null
+            )
           }
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}

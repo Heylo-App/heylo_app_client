@@ -33,6 +33,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { momentsService } from '@/services/moments.service';
 import { socketService } from '@/services/socket.service';
 import type { Moment } from '@/types/moment';
+import { HomeSkeleton } from '@/components/skeletons';
 
 const SHEET_BG = '#111115';
 const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
@@ -264,12 +265,14 @@ export default function MyMomentsScreen() {
             </Animated.View>
           }
           ListEmptyComponent={
-            !isLoading ? (
+            isLoading ? (
+              <HomeSkeleton />
+            ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="albums-outline" size={48} color="rgba(255,255,255,0.15)" />
                 <Text style={styles.emptyText}>You haven&apos;t posted any moments yet</Text>
               </View>
-            ) : null
+            )
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item, index }) => (

@@ -7,13 +7,13 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import { GroupsSkeleton } from '@/components/skeletons';
 import { BlurView } from 'expo-blur';
 
 import { Text, Heading } from '@/components/ui/Text';
@@ -104,9 +104,7 @@ export default function GroupsScreen() {
         </View>
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <GroupsSkeleton />
         ) : (
           <FlatList
             data={groups}

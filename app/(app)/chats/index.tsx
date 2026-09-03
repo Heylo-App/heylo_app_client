@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { chatsService, Chat } from '@/services/chats.service';
 import { useAuthStore } from '@/store/auth.store';
 import { spacing } from '@/theme/spacing';
+import { ChatsSkeleton } from '@/components/skeletons';
 
 export default function ChatsListScreen() {
   const router = useRouter();
@@ -85,13 +86,15 @@ export default function ChatsListScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            !loading ? (
+            loading ? (
+              <ChatsSkeleton />
+            ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="chatbubbles-outline" size={64} color="rgba(255,255,255,0.2)" />
                 <Text style={styles.emptyText}>No chats yet</Text>
                 <Text style={styles.emptySubtext}>Connect with people on the Explore screen!</Text>
               </View>
-            ) : null
+            )
           }
         />
       </SafeAreaView>
