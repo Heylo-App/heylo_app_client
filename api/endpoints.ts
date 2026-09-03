@@ -9,6 +9,7 @@ export const endpoints = {
   users: {
     active: '/users/active',
     suggested: '/users/suggested',
+    search: '/users/search',
     profile: (id: string) => `/users/${id}`,
     updateProfile: '/users/me',
   },

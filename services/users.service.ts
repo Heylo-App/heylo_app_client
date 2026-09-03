@@ -20,4 +20,8 @@ export const usersService = {
     const { data } = await apiClient.get(endpoints.users.active);
     return data.data;
   },
+  async searchUsers(query: string): Promise<any[]> {
+    const { data } = await apiClient.get(endpoints.users.search, { params: { q: query } });
+    return data.data;
+  },
 };

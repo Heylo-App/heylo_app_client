@@ -7,15 +7,12 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Share,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
-
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/theme/colors';
@@ -33,9 +30,6 @@ export default function GroupChatScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [memberUsername, setMemberUsername] = useState('');
-  const [isAddingMember, setIsAddingMember] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -84,74 +78,6 @@ export default function GroupChatScreen() {
     setInputText('');
   };
 
-  const handleSettings = () => {
-    if (!group || !user) return;
-
-    const isAdmin = group.adminId === user.id;
-
-    Alert.alert(group.name, 'Group Settings', [
-      {
-        text: 'Copy Invite Link',
-        onPress: () => {
-          Clipboard.setStringAsync(`heylo://groups/invite/${group.inviteCode}`);
-          Alert.alert('Copied!', 'Invite link copied to clipboard.');
-        },
-      },
-      { text: 'Add Member', onPress: () => setShowAddMember(true) },
-      { text: 'Cancel', style: 'cancel' },
-      isAdmin
-        ? { text: 'Delete Group', style: 'destructive', onPress: handleDelete }
-        : { text: 'Leave Group', style: 'destructive', onPress: handleLeave },
-    ]);
-  };
-
-  const handleDelete = async () => {
-    Alert.alert('Delete Group', 'Are you sure you want to delete this group?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await groupsService.deleteGroup(id);
-          router.back();
-        },
-      },
-    ]);
-  };
-
-  const handleLeave = async () => {
-    Alert.alert('Leave Group', 'Are you sure you want to leave?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await groupsService.leaveGroup(id);
-            router.back();
-          } catch (e: any) {
-            Alert.alert('Error', e?.response?.data?.message || 'Could not leave group');
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleAddMemberSubmit = async () => {
-    if (!memberUsername.trim()) return;
-    setIsAddingMember(true);
-    try {
-      await groupsService.addMember(id, memberUsername.trim());
-      Alert.alert('Success', 'Member added successfully');
-      setShowAddMember(false);
-      setMemberUsername('');
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not add member');
-    } finally {
-      setIsAddingMember(false);
-    }
-  };
-
   const renderMessage = ({ item }: { item: GroupMessage }) => {
     const isMe = item.senderId._id === user?.id;
     return (
@@ -186,10 +112,9 @@ export default function GroupChatScreen() {
             <Heading level={2} style={styles.headerTitle}>
               {group?.name || 'Group'}
             </Heading>
-            <Text style={styles.headerSubtitle}>Tap for group info</Text>
           </Pressable>
-          <Pressable onPress={handleSettings} style={styles.iconBtn}>
-            <Ionicons name="ellipsis-vertical" size={24} color="white" />
+          <Pressable onPress={() => router.push(`/(app)/groups/info/${id}`)} style={styles.iconBtn}>
+            <Ionicons name="information-circle" size={24} color="white" />
           </Pressable>
         </View>
 
@@ -224,74 +149,10 @@ export default function GroupChatScreen() {
                 colors={colors.primaryGradient}
                 style={StyleSheet.absoluteFillObject}
               />
-              <Ionicons name="send" size={20} color="white" />
+              <Ionicons name="send" size={20} color="white" style={styles.sendIcon} />
             </Pressable>
           </View>
         </KeyboardAvoidingView>
-
-        {showAddMember && (
-          <View
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 100,
-              },
-            ]}
-          >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={{ width: '80%' }}
-            >
-              <View style={{ backgroundColor: '#18181B', padding: 24, borderRadius: 16 }}>
-                <Heading level={3} style={{ color: 'white', marginBottom: 16 }}>
-                  Add Member
-                </Heading>
-                <TextInput
-                  style={styles.input}
-                  value={memberUsername}
-                  onChangeText={setMemberUsername}
-                  placeholder="Enter username"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  autoCapitalize="none"
-                  autoFocus
-                />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'flex-end',
-                    marginTop: 24,
-                    gap: 16,
-                  }}
-                >
-                  <Pressable onPress={() => setShowAddMember(false)}>
-                    <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>
-                      Cancel
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleAddMemberSubmit}
-                    disabled={isAddingMember || !memberUsername.trim()}
-                  >
-                    <Text
-                      style={{
-                        color:
-                          !memberUsername.trim() || isAddingMember
-                            ? 'rgba(236,72,153,0.5)'
-                            : colors.primary,
-                        fontWeight: '700',
-                      }}
-                    >
-                      {isAddingMember ? 'Adding...' : 'Add'}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </KeyboardAvoidingView>
-          </View>
-        )}
       </SafeAreaView>
     </View>
   );
@@ -362,5 +223,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: spacing.sm,
     overflow: 'hidden',
+  },
+  sendIcon: {
+    paddingLeft: 2,
   },
 });

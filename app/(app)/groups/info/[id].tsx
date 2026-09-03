@@ -1,16 +1,35 @@
-import { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Pressable,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
+import * as Clipboard from 'expo-clipboard';
 
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
+import { usersService } from '@/services/users.service';
+import { useAuthStore } from '@/store/auth.store';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_BG = '#111115';
+const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
 
 interface MemberInfo {
   _id: string;
@@ -33,9 +52,17 @@ interface GroupInfoData {
 export default function GroupInfoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuthStore();
 
   const [info, setInfo] = useState<GroupInfoData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Drawer State
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [invitingId, setInvitingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -50,6 +77,70 @@ export default function GroupInfoScreen() {
     };
     fetchInfo();
   }, [id]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await usersService.searchUsers(searchQuery.trim());
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search failed', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const handleDelete = async () => {
+    Alert.alert('Delete Group', 'Are you sure you want to delete this group?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await groupsService.deleteGroup(id);
+          router.replace('/(app)/(tabs)/groups');
+        },
+      },
+    ]);
+  };
+
+  const handleLeave = async () => {
+    Alert.alert('Leave Group', 'Are you sure you want to leave?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await groupsService.leaveGroup(id);
+            router.replace('/(app)/(tabs)/groups');
+          } catch (e: any) {
+            Alert.alert('Error', e?.response?.data?.message || 'Could not leave group');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleInvite = async (username: string, userId: string) => {
+    setInvitingId(userId);
+    try {
+      await groupsService.addMember(id, username);
+      Alert.alert('Success', `Invite sent to ${username}`);
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Could not send invite');
+    } finally {
+      setInvitingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -108,6 +199,45 @@ export default function GroupInfoScreen() {
         </Text>
       </View>
 
+      {/* Action Buttons */}
+      <View style={styles.actionsRow}>
+        <Pressable style={styles.actionBtn} onPress={() => setShowAddMember(true)}>
+          <View style={[styles.actionIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+            <Ionicons name="person-add" size={20} color="#3b82f6" />
+          </View>
+          <Text style={styles.actionLabel}>Add</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.actionBtn}
+          onPress={() => {
+            Clipboard.setStringAsync(`heylo://groups/invite/${info.inviteCode}`);
+            Alert.alert('Copied!', 'Invite link copied to clipboard.');
+          }}
+        >
+          <View style={[styles.actionIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+            <Ionicons name="link" size={20} color="#10b981" />
+          </View>
+          <Text style={styles.actionLabel}>Copy Link</Text>
+        </Pressable>
+
+        {info.adminId._id === user?.id ? (
+          <Pressable style={styles.actionBtn} onPress={handleDelete}>
+            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="trash" size={20} color="#ef4444" />
+            </View>
+            <Text style={styles.actionLabel}>Delete</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.actionBtn} onPress={handleLeave}>
+            <View style={[styles.actionIconBg, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="log-out" size={20} color="#ef4444" />
+            </View>
+            <Text style={styles.actionLabel}>Leave</Text>
+          </Pressable>
+        )}
+      </View>
+
       {/* Admin Section */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Created by</Text>
@@ -153,6 +283,88 @@ export default function GroupInfoScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
+
+        {/* ─── Add Member Sheet ───────────────────────────── */}
+        {showAddMember && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
+            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+              <Pressable style={styles.overlayDismiss} onPress={() => setShowAddMember(false)} />
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ width: '100%' }}
+              >
+                <Animated.View entering={SlideInDown.duration(350)} style={styles.drawerSheet}>
+                  <View style={styles.sheetHandle} />
+                  <View style={styles.drawerHeader}>
+                    <Heading level={3} style={styles.drawerTitle}>
+                      Add Members
+                    </Heading>
+                    <Pressable onPress={() => setShowAddMember(false)}>
+                      <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.searchInputWrapper}>
+                    <Ionicons name="search" size={20} color="rgba(255,255,255,0.4)" />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search by username..."
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      autoCapitalize="none"
+                      autoFocus
+                    />
+                  </View>
+
+                  {isSearching ? (
+                    <View style={styles.searchEmpty}>
+                      <ActivityIndicator color={colors.primary} />
+                    </View>
+                  ) : searchResults.length > 0 ? (
+                    <FlatList
+                      data={searchResults}
+                      keyExtractor={(item) => item._id}
+                      style={styles.searchList}
+                      keyboardShouldPersistTaps="handled"
+                      renderItem={({ item }) => {
+                        const isMember = info.members.some((m) => m._id === item._id);
+                        return (
+                          <View style={styles.searchResultItem}>
+                            <Avatar avatarId={item.avatarId} alias={item.alias} size={36} />
+                            <View style={styles.searchResultInfo}>
+                              <Text style={styles.searchResultAlias}>{item.alias}</Text>
+                              <Text style={styles.searchResultUsername}>@{item.username}</Text>
+                            </View>
+                            {isMember ? (
+                              <Text style={styles.alreadyMemberText}>Joined</Text>
+                            ) : (
+                              <Pressable
+                                style={styles.inviteBtn}
+                                onPress={() => handleInvite(item.username, item._id)}
+                                disabled={invitingId === item._id}
+                              >
+                                {invitingId === item._id ? (
+                                  <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                  <Text style={styles.inviteBtnText}>Invite</Text>
+                                )}
+                              </Pressable>
+                            )}
+                          </View>
+                        );
+                      }}
+                    />
+                  ) : searchQuery.trim() !== '' ? (
+                    <View style={styles.searchEmpty}>
+                      <Text style={styles.searchEmptyText}>No users found.</Text>
+                    </View>
+                  ) : null}
+                </Animated.View>
+              </KeyboardAvoidingView>
+            </BlurView>
+          </Animated.View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -211,6 +423,23 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontWeight: '600',
   },
+
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing['2xl'],
+    marginBottom: spacing.xl,
+  },
+  actionBtn: { alignItems: 'center', gap: 8 },
+  actionIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
 
   // Section
   sectionHeader: {
@@ -274,4 +503,74 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   moodText: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+
+  // Drawer
+  overlayWrapper: { ...StyleSheet.absoluteFillObject, zIndex: 100 },
+  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
+  overlayDismiss: { ...StyleSheet.absoluteFillObject },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  drawerSheet: {
+    backgroundColor: SHEET_BG,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['4xl'],
+    maxHeight: SCREEN_HEIGHT * 0.7,
+    minHeight: 400,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  drawerTitle: { fontSize: 20, fontWeight: '800', color: 'white' },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: SHEET_SURFACE,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    color: 'white',
+    fontSize: 15,
+    marginLeft: spacing.sm,
+  },
+  searchList: { flexGrow: 0 },
+  searchEmpty: { paddingVertical: 40, alignItems: 'center' },
+  searchEmptyText: { color: 'rgba(255,255,255,0.4)', fontSize: 14 },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  searchResultInfo: { flex: 1, marginLeft: spacing.md },
+  searchResultAlias: { fontSize: 15, fontWeight: '700', color: 'white' },
+  searchResultUsername: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  inviteBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  inviteBtnText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  alreadyMemberText: { color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: '600' },
 });
