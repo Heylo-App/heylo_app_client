@@ -61,11 +61,11 @@ export default function GroupRequestsScreen() {
   const renderInviteItem = ({ item }: { item: GroupInvite }) => (
     <View style={styles.inviteCard}>
       <View style={styles.inviteHeader}>
-        <Avatar avatarId={item.inviterId.avatarId} size={48} />
+        <Avatar avatarId={item.inviterId?.avatarId || 'avatar-1'} size={48} />
         <View style={styles.inviteInfo}>
-          <Text style={styles.inviterName}>{item.inviterId.alias}</Text>
+          <Text style={styles.inviterName}>{item.inviterId?.alias || 'Unknown User'}</Text>
           <Text style={styles.inviteText}>invited you to join</Text>
-          <Text style={styles.groupName}>{item.groupId.name}</Text>
+          <Text style={styles.groupName}>{item.groupId?.name || 'Deleted Group'}</Text>
         </View>
       </View>
 
