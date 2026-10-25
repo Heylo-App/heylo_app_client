@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
+import { GroupChatSkeleton } from '@/components/skeletons';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
@@ -32,6 +33,7 @@ export default function GroupChatScreen() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -61,6 +63,8 @@ export default function GroupChatScreen() {
         setMessages(msgs);
       } catch (error) {
         console.error('Error fetching group chat', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -70,7 +74,11 @@ export default function GroupChatScreen() {
     socketService.joinGroupRoom(id);
     const unsubscribe = socketService.onReceiveGroupMessage((newMsg) => {
       if (newMsg.groupId === id) {
-        setMessages((prev) => [...prev, newMsg]);
+        setMessages((prev) => {
+          // Prevent duplicate messages
+          if (prev.some((m) => m._id === newMsg._id)) return prev;
+          return [...prev, newMsg];
+        });
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }
     });
@@ -152,14 +160,18 @@ export default function GroupChatScreen() {
             </Pressable>
           </View>
 
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item._id}
-            renderItem={renderMessage}
-            contentContainerStyle={styles.messageList}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          />
+          {loading ? (
+            <GroupChatSkeleton />
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              keyExtractor={(item) => item._id}
+              renderItem={renderMessage}
+              contentContainerStyle={styles.messageList}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            />
+          )}
 
           <View
             style={[

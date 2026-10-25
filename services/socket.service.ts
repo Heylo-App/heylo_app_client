@@ -45,6 +45,8 @@ class SocketService {
   private currentUserId: string | null = null;
   private currentToken: string | null = null;
   private listeners = new Map<string, Set<Function>>();
+  private joinedGroupRooms = new Set<string>();
+  private joinedChatRooms = new Set<string>();
 
   connect(token?: string, userId?: string) {
     if (!env.socketUrl) return;
@@ -80,6 +82,7 @@ class SocketService {
       if (this.currentUserId) {
         this.registerUser(this.currentUserId);
       }
+      this.rejoinRooms();
       this.bindSocketListeners();
     });
 
@@ -88,6 +91,7 @@ class SocketService {
       if (this.currentUserId) {
         this.registerUser(this.currentUserId);
       }
+      this.rejoinRooms();
       this.bindSocketListeners();
     });
 
@@ -125,6 +129,15 @@ class SocketService {
     });
   }
 
+  private rejoinRooms() {
+    this.joinedGroupRooms.forEach((groupId) => {
+      this.socket?.emit('join_group_room', groupId);
+    });
+    this.joinedChatRooms.forEach((chatId) => {
+      this.socket?.emit('join_chat_room', chatId);
+    });
+  }
+
   onConnect(callback: () => void) {
     if (!this.socket) return;
     if (this.socket.connected) {
@@ -139,6 +152,8 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+    this.joinedGroupRooms.clear();
+    this.joinedChatRooms.clear();
   }
 
   on<K extends keyof SocketEvents>(event: K, handler: SocketEvents[K]) {
@@ -171,10 +186,12 @@ class SocketService {
   // ── Group Chat ──────────────────────────────────────────────────
 
   joinGroupRoom(groupId: string) {
+    this.joinedGroupRooms.add(groupId);
     this.emit('join_group_room', groupId);
   }
 
   leaveGroupRoom(groupId: string) {
+    this.joinedGroupRooms.delete(groupId);
     this.emit('leave_group_room', groupId);
   }
 
@@ -278,6 +295,7 @@ class SocketService {
   // ── 1-on-1 Chat ────────────────────────────────────────────────
 
   joinChatRoom(chatId: string) {
+    this.joinedChatRooms.add(chatId);
     this.emit('join_chat_room', chatId);
   }
 
@@ -286,6 +304,7 @@ class SocketService {
   }
 
   leaveChatRoom(chatId: string) {
+    this.joinedChatRooms.delete(chatId);
     this.emit('leave_chat_room', chatId);
   }
 
