@@ -16,7 +16,12 @@ interface MoodChipProps {
   compact?: boolean;
 }
 
-export const MoodChip = memo(function MoodChip({ mood, selected, onPress, compact }: MoodChipProps) {
+export const MoodChip = memo(function MoodChip({
+  mood,
+  selected,
+  onPress,
+  compact,
+}: MoodChipProps) {
   const handlePress = useCallback(() => {
     Haptics.selectionAsync();
     onPress?.(mood.id);

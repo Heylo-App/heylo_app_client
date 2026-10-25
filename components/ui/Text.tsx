@@ -11,12 +11,7 @@ interface TextProps extends RNTextProps {
   muted?: boolean;
 }
 
-export const Text = memo(function Text({
-  variant = 'body',
-  muted,
-  style,
-  ...props
-}: TextProps) {
+export const Text = memo(function Text({ variant = 'body', muted, style, ...props }: TextProps) {
   return (
     <RNText
       style={[typography[variant], muted && { color: colors.foregroundSecondary }, style]}

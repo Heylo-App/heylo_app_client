@@ -15,7 +15,7 @@ export const apiClient = axios.create({
 });
 
 let isRefreshing = false;
-let refreshQueue: Array<(token: string | null) => void> = [];
+let refreshQueue: ((token: string | null) => void)[] = [];
 
 function processQueue(token: string | null) {
   refreshQueue.forEach((cb) => cb(token));

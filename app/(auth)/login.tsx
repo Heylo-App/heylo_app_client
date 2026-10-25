@@ -8,6 +8,7 @@ import {
   View,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -31,7 +32,7 @@ export default function LoginScreen() {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { identifier: '', password: '' },
@@ -43,7 +44,7 @@ export default function LoginScreen() {
         identifier: data.identifier,
         password: data.password,
       });
-      setUser(response.user);
+      setUser(response.user, response.accessToken);
 
       if (response.user.isOnboarded) {
         router.replace(Routes.app.home);
@@ -143,17 +144,21 @@ export default function LoginScreen() {
                 <Text style={styles.securityText}>Your data is encrypted and never shared</Text>
               </View>
 
-              <Pressable style={styles.submitBtn} onPress={onSubmit}>
+              <Pressable style={styles.submitBtn} onPress={onSubmit} disabled={isSubmitting}>
                 <LinearGradient
                   colors={colors.primaryGradient}
                   style={StyleSheet.absoluteFillObject}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 />
-                <>
-                  <Text style={styles.submitBtnText}>Log In</Text>
-                  <Ionicons name="arrow-forward" size={20} color="white" />
-                </>
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Text style={styles.submitBtnText}>Log In</Text>
+                    <Ionicons name="arrow-forward" size={20} color="white" />
+                  </>
+                )}
               </Pressable>
 
               <Pressable onPress={() => router.push(Routes.auth.register)}>

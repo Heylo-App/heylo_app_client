@@ -18,7 +18,7 @@ export const GradientBackground = memo(function GradientBackground({
   mood,
 }: GradientBackgroundProps) {
   const insets = useSafeAreaInsets();
-  
+
   // Use the mood color if available, otherwise a subtle primary tint for the glow
   const glowColor = mood ? moodGradients[mood][0] : colors.primaryLight;
 
@@ -26,15 +26,15 @@ export const GradientBackground = memo(function GradientBackground({
     <View style={styles.container}>
       {/* Background Glow Node */}
       <View style={[styles.glowNode, { backgroundColor: glowColor }]} />
-      
+
       {/* Intense blur to scatter the light, creating a soft radial glow */}
-      <BlurView 
-        intensity={100} 
-        tint="dark" 
-        style={StyleSheet.absoluteFill} 
+      <BlurView
+        intensity={100}
+        tint="dark"
+        style={StyleSheet.absoluteFill}
         experimentalBlurMethod="dimezisBlurView"
       />
-      
+
       <View style={[styles.content, { paddingTop: insets.top }]}>{children}</View>
     </View>
   );

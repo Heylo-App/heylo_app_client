@@ -48,6 +48,28 @@ export const authService = {
     return data;
   },
 
+  async sendOtp(payload: any): Promise<{ success: boolean; message?: string }> {
+    if (env.useMockApi) {
+      return delay({ success: true, message: 'OTP sent successfully' });
+    }
+    const { data } = await apiClient.post(endpoints.auth.login, payload);
+    return data;
+  },
+
+  async verifyOtp(payload: any): Promise<AuthTokens & { user: AnonymousProfile }> {
+    if (env.useMockApi) {
+      return this.login(payload);
+    }
+    const { data } = await apiClient.post(endpoints.auth.login, payload);
+    if (data.accessToken) {
+      await secureStorage.setToken(data.accessToken);
+    }
+    if (data.refreshToken) {
+      await secureStorage.setRefreshToken(data.refreshToken);
+    }
+    return data;
+  },
+
   async getMe(): Promise<AnonymousProfile> {
     if (env.useMockApi) {
       return delay(mockProfile);

@@ -31,9 +31,7 @@ function ErrorFallback({
 }
 
 export function AppErrorBoundary({ children }: AppErrorBoundaryProps) {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>{children}</ErrorBoundary>
-  );
+  return <ErrorBoundary FallbackComponent={ErrorFallback}>{children}</ErrorBoundary>;
 }
 
 const styles = StyleSheet.create({

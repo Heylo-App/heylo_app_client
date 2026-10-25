@@ -6,9 +6,7 @@ import type { ReportPayload } from '@/types/moderation';
 export const moderationService = {
   async report(payload: ReportPayload): Promise<{ success: boolean }> {
     if (env.useMockApi || env.isDev) {
-      return new Promise((resolve) =>
-        setTimeout(() => resolve({ success: true }), 300),
-      );
+      return new Promise((resolve) => setTimeout(() => resolve({ success: true }), 300));
     }
     const { data } = await apiClient.post(endpoints.moderation.report, payload);
     return data;

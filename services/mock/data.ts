@@ -16,6 +16,7 @@ function pick<T>(arr: readonly T[], index: number): T {
 export const mockProfile: AnonymousProfile = {
   id: 'user-me',
   alias: 'HeyloTraveler',
+  username: 'heylotraveler',
   avatarId: 'avatar-1',
   mood: 'reflective',
   needs: ['listen', 'company'],
@@ -28,18 +29,21 @@ export const mockProfile: AnonymousProfile = {
 
 export const mockMoments: Moment[] = Array.from({ length: 20 }, (_, i) => ({
   id: `moment-${i}`,
-  authorId: `user-${i}`,
-  authorAlias: pick(aliases, i),
-  authorAvatarId: pick(avatars, i),
+  author: {
+    id: `user-${i}`,
+    name: pick(aliases, i),
+    handle: pick(aliases, i).toLowerCase(),
+    avatarId: pick(avatars, i),
+  },
   content:
     i % 2 === 0
       ? 'Sometimes you just need a quiet corner of the internet. Grateful this space exists.'
       : 'Checked in with myself today. Feeling lighter after sharing, even anonymously.',
-  mood: pick(MOOD_TYPES, i),
-  likesCount: Math.floor(Math.random() * 120) + 5,
-  commentsCount: Math.floor(Math.random() * 30),
+  timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+  likes: Math.floor(Math.random() * 120) + 5,
+  comments: [],
   isLiked: i % 5 === 0,
-  createdAt: new Date(Date.now() - i * 3600000).toISOString(),
+  isMine: i === 0,
 }));
 
 export const mockSuggestedUsers: PublicUser[] = Array.from({ length: 12 }, (_, i) => ({

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -31,7 +32,7 @@ export default function RegisterScreen() {
     control,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -47,7 +48,7 @@ export default function RegisterScreen() {
         email: data.email,
         password: data.password,
       });
-      setUser(response.user);
+      setUser(response.user, response.accessToken);
       router.replace(Routes.onboarding.profileDetails);
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -176,17 +177,21 @@ export default function RegisterScreen() {
                 <Text style={styles.linkText}>Privacy Policy</Text>.
               </Text>
 
-              <Pressable style={styles.submitBtn} onPress={onSubmit}>
+              <Pressable style={styles.submitBtn} onPress={onSubmit} disabled={isSubmitting}>
                 <LinearGradient
                   colors={colors.primaryGradient}
                   style={StyleSheet.absoluteFillObject}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 />
-                <>
-                  <Text style={styles.submitBtnText}>Continue</Text>
-                  <Ionicons name="arrow-forward" size={20} color="white" />
-                </>
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Text style={styles.submitBtnText}>Continue</Text>
+                    <Ionicons name="arrow-forward" size={20} color="white" />
+                  </>
+                )}
               </Pressable>
 
               <Pressable onPress={() => router.push(Routes.auth.login)}>

@@ -1,9 +1,4 @@
-export type ReportReason =
-  | 'harassment'
-  | 'spam'
-  | 'inappropriate'
-  | 'impersonation'
-  | 'other';
+export type ReportReason = 'harassment' | 'spam' | 'inappropriate' | 'impersonation' | 'other';
 
 export interface ReportPayload {
   targetId: string;

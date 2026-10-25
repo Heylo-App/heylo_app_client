@@ -28,7 +28,12 @@ export const Input = memo(
             ref={ref}
             placeholderTextColor={colors.muted}
             secureTextEntry={secureTextEntryToggle ? isPasswordHidden : secureTextEntry}
-            style={[styles.input, error && styles.inputError, secureTextEntryToggle && styles.inputWithIcon, style]}
+            style={[
+              styles.input,
+              error && styles.inputError,
+              secureTextEntryToggle && styles.inputWithIcon,
+              style,
+            ]}
             accessibilityLabel={label}
             {...props}
           />

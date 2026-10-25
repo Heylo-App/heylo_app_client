@@ -7,10 +7,12 @@ import {
   Pressable,
   TextInput,
   FlatList,
+  Keyboard,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
+import Animated, { FadeInUp, Layout, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -26,99 +28,179 @@ export default function ChatScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>(); // This is the chatId
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+
+  const currentUserId = user?.id || (user as any)?._id || '';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isConnectionClosed, setIsConnectionClosed] = useState(false);
+  const [connectionClosedReason, setConnectionClosedReason] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    // 1. Enter Chat - make inactive to avoid new requests
-    socketService.toggleActive(user!.id, '', '', false);
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false),
+    );
 
-    // 2. Load Messages
-    const loadMessages = async () => {
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    // 1. Enter Chat - make inactive in explore pool to avoid duplicate requests
+    if (currentUserId) {
+      socketService.toggleActive(currentUserId, '', '', false);
+    }
+
+    // 2. Load Messages & Chat Details
+    const loadChatData = async () => {
       try {
         const msgs = await chatsService.getMessages(id);
         setMessages(msgs);
 
-        // Find other user from chat participants list. Since we only have chatId,
-        // we ideally need a GET /chats/:id endpoint, but for now we extract from the first message
-        // if it exists, or we could fetch the chats list to find it.
-        // We'll rely on the parent screen passing the other user, or fetch chats list.
-        const allChats = await chatsService.getChats();
-        const currentChat = allChats.find((c) => c._id === id);
-        if (currentChat) {
-          const participant = currentChat.participants.find((p) => p._id !== user?.id);
-          if (participant) setOtherUser(participant);
+        // Fetch single chat directly
+        try {
+          const chat = await chatsService.getChat(id);
+          if (chat?.participants) {
+            const partner = chat.participants.find(
+              (p) => (p._id || (p as any).id) !== currentUserId,
+            );
+            if (partner) setOtherUser(partner);
+          }
+        } catch {
+          // Fallback to chats list
+          const allChats = await chatsService.getChats();
+          const currentChat = allChats.find((c) => c._id === id);
+          if (currentChat?.participants) {
+            const participant = currentChat.participants.find(
+              (p) => (p._id || (p as any).id) !== currentUserId,
+            );
+            if (participant) setOtherUser(participant);
+          }
         }
       } catch (err) {
-        console.error('Failed to load messages', err);
+        console.error('Failed to load chat data', err);
       }
     };
-    loadMessages();
 
-    // 3. Socket events
+    loadChatData();
+
+    // 3. Socket Events
     socketService.joinChatRoom(id);
 
     const unsubReceive = socketService.onReceiveChatMessage((msg) => {
       if (msg.chatId === id) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          // Avoid duplicate messages if already present
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
+      }
+    });
+
+    const unsubPeerLeft = socketService.onPeerLeftChat((data) => {
+      if (data.chatId === id) {
+        setIsConnectionClosed(true);
+        setConnectionClosedReason(data.message || 'Peer has left the chat.');
+      }
+    });
+
+    const unsubChatClosed = socketService.onChatClosed((data) => {
+      if (data.chatId === id) {
+        setIsConnectionClosed(true);
+        setConnectionClosedReason(data.message || 'Connection has been closed.');
       }
     });
 
     return () => {
       socketService.leaveChatRoom(id);
       unsubReceive();
-      // Make active again when leaving (optional: we just leave them inactive,
-      // the prompt says "make it inactive till the chat closes rest fine", but didn't say to auto-resume active state,
-      // it's safer to leave them inactive and let them manually toggle back).
+      unsubPeerLeft();
+      unsubChatClosed();
     };
-  }, [id, user]);
+  }, [id, currentUserId]);
 
   const sendMessage = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isConnectionClosed) return;
+
+    const text = inputText.trim();
+    setInputText('');
 
     socketService.sendChatMessage({
       chatId: id,
-      senderId: user!.id,
-      text: inputText.trim(),
+      senderId: currentUserId,
+      text,
       senderAlias: user?.alias,
       senderAvatarId: user?.avatarId,
     });
+  };
 
-    setInputText('');
+  const handleEndChat = () => {
+    Alert.alert(
+      'End Connection',
+      'Are you sure you want to end this connection and close the chat?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'End Chat',
+          style: 'destructive',
+          onPress: () => {
+            socketService.closeChat(id, currentUserId);
+            socketService.leaveChatRoom(id);
+            router.back();
+          },
+        },
+      ],
+    );
   };
 
   useEffect(() => {
-    // Scroll to bottom on new message
     setTimeout(() => {
       if (messages.length > 0) {
         flatListRef.current?.scrollToEnd({ animated: true });
       }
-    }, 200);
+    }, 150);
   }, [messages]);
 
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isMe =
       typeof item.senderId === 'string'
-        ? item.senderId === user?.id
-        : item.senderId._id === user?.id;
+        ? item.senderId === currentUserId
+        : (item.senderId as any)?._id === currentUserId ||
+          (item.senderId as any)?.id === currentUserId;
 
     return (
       <Animated.View
-        entering={FadeInUp.duration(400).delay(Math.min(index * 50, 500))}
+        entering={FadeInUp.duration(300).delay(Math.min(index * 30, 300))}
         layout={Layout.springify().damping(16).stiffness(120)}
         style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}
       >
         {!isMe && (
-          <View style={styles.messageAvatar}>
+          <Pressable
+            style={styles.messageAvatar}
+            onPress={() => {
+              const partnerId = otherUser?._id || (otherUser as any)?.id;
+              if (partnerId) {
+                router.push(`/(app)/users/${partnerId}`);
+              }
+            }}
+          >
             <Avatar
               avatarId={otherUser?.avatarId || 'avatar-1'}
               alias={otherUser?.alias}
               size={28}
             />
-          </View>
+          </Pressable>
         )}
 
         <View style={styles.messageContent}>
@@ -154,123 +236,174 @@ export default function ChatScreen() {
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
 
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={{ flex: 1, paddingTop: insets.top }}>
           {/* ── Header ──────────────────────────────────────────── */}
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-              <Ionicons name="chevron-back" size={28} color="white" />
+              <Ionicons name="chevron-back" size={26} color="white" />
             </Pressable>
 
-            <View style={styles.headerProfile}>
+            <Pressable
+              style={styles.headerProfile}
+              onPress={() => {
+                const partnerId = otherUser?._id || (otherUser as any)?.id;
+                if (partnerId) {
+                  router.push(`/(app)/users/${partnerId}`);
+                }
+              }}
+            >
               <View style={styles.headerAvatarWrapper}>
                 <Avatar
                   avatarId={otherUser?.avatarId || 'avatar-1'}
                   alias={otherUser?.alias || '...'}
                   size={40}
                 />
-                <View style={styles.onlineDot} />
+                {!isConnectionClosed && <View style={styles.onlineDot} />}
               </View>
               <View>
                 <Heading level={3} style={styles.headerName}>
-                  {otherUser?.alias || 'Connecting...'}
+                  {otherUser?.alias || 'Connected User'}
                 </Heading>
+                <Text style={styles.headerStatus}>
+                  {isConnectionClosed ? 'Connection closed' : 'Live Connection'}
+                </Text>
               </View>
-            </View>
+            </Pressable>
 
-            <Pressable style={styles.iconBtn}>
-              <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+            <Pressable onPress={handleEndChat} style={styles.endChatBtn}>
+              <Ionicons name="close-circle-outline" size={24} color="#FF453A" />
             </Pressable>
           </View>
+
+          {/* ── Closed Banner ───────────────────────────────────── */}
+          {isConnectionClosed && (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.closedBanner}>
+              <Ionicons name="alert-circle" size={18} color="#FF453A" />
+              <Text style={styles.closedBannerText}>
+                {connectionClosedReason || 'This connection is closed.'}
+              </Text>
+            </Animated.View>
+          )}
 
           {/* ── Messages List ───────────────────────────────────── */}
           <FlatList
             ref={flatListRef}
             data={messages}
-            keyExtractor={(item) => item._id}
+            keyExtractor={(item, idx) => item._id || `msg-${idx}`}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesContainer}
             showsVerticalScrollIndicator={false}
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubbles-outline" size={48} color="rgba(255,255,255,0.2)" />
+                <Text style={styles.emptyText}>You are connected! Say heylo 👋</Text>
+              </View>
+            }
           />
 
           {/* ── Input Area ──────────────────────────────────────── */}
-          <View style={styles.inputArea}>
-            <Pressable style={styles.attachBtn}>
-              <Ionicons name="add" size={24} color="rgba(255,255,255,0.6)" />
-            </Pressable>
-
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Type a message..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={500}
-              />
-            </View>
-
-            <Animated.View
-              style={inputText.trim() ? styles.sendBtnActiveWrapper : styles.sendBtnInactiveWrapper}
+          {isConnectionClosed ? (
+            <View
+              style={[styles.closedFooter, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
             >
-              <Pressable style={styles.sendBtn} onPress={sendMessage} disabled={!inputText.trim()}>
-                {inputText.trim() ? (
-                  <LinearGradient
-                    colors={colors.primaryGradient}
-                    style={StyleSheet.absoluteFillObject}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  />
-                ) : null}
-                <Ionicons
-                  name="paper-plane"
-                  size={20}
-                  color={inputText.trim() ? 'white' : 'rgba(255,255,255,0.3)'}
-                  style={{ marginLeft: 2 }} // center adjustment
-                />
+              <Text style={styles.closedFooterText}>Connection has ended.</Text>
+              <Pressable onPress={() => router.back()} style={styles.backToExploreBtn}>
+                <Text style={styles.backToExploreText}>Back to Explore</Text>
               </Pressable>
-            </Animated.View>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.inputArea,
+                {
+                  paddingBottom: isKeyboardVisible
+                    ? spacing.md
+                    : Math.max(insets.bottom, spacing.md),
+                },
+              ]}
+            >
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type a message..."
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                  maxLength={500}
+                />
+              </View>
+
+              <Animated.View
+                style={
+                  inputText.trim() ? styles.sendBtnActiveWrapper : styles.sendBtnInactiveWrapper
+                }
+              >
+                <Pressable
+                  style={styles.sendBtn}
+                  onPress={sendMessage}
+                  disabled={!inputText.trim()}
+                >
+                  {inputText.trim() ? (
+                    <LinearGradient
+                      colors={colors.primaryGradient}
+                      style={StyleSheet.absoluteFillObject}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    />
+                  ) : null}
+                  <Ionicons
+                    name="paper-plane"
+                    size={20}
+                    color={inputText.trim() ? 'white' : 'rgba(255,255,255,0.3)'}
+                    style={{ marginLeft: 2 }}
+                  />
+                </Pressable>
+              </Animated.View>
+            </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
-  keyboardView: { flex: 1 },
-
-  // Header
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  keyboardView: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(24, 24, 27, 0.8)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   iconBtn: {
-    padding: spacing.sm,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerProfile: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginLeft: spacing.sm,
+    marginLeft: spacing.xs,
   },
   headerAvatarWrapper: {
     position: 'relative',
+    marginRight: spacing.sm,
   },
   onlineDot: {
     position: 'absolute',
@@ -284,59 +417,84 @@ const styles = StyleSheet.create({
     borderColor: '#18181B',
   },
   headerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.white,
+    color: 'white',
   },
-  headerMood: {
+  headerStatus: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 1,
+  },
+  endChatBtn: {
+    padding: spacing.xs,
+  },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(255, 69, 58, 0.15)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 69, 58, 0.25)',
+  },
+  closedBannerText: {
+    color: '#FF6B6B',
     fontSize: 13,
-    color: colors.primary,
     fontWeight: '600',
   },
-
-  // Messages
   messagesContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-    gap: spacing.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing['4xl'],
+    gap: spacing.sm,
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 14,
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.sm,
-    maxWidth: '85%',
+    marginBottom: spacing.xs,
   },
   messageRowMe: {
-    alignSelf: 'flex-end',
+    justifyContent: 'flex-end',
   },
   messageRowThem: {
-    alignSelf: 'flex-start',
+    justifyContent: 'flex-start',
   },
   messageAvatar: {
-    marginBottom: spacing.md,
+    marginRight: spacing.xs,
+    marginBottom: 4,
   },
   messageContent: {
-    gap: 4,
+    maxWidth: '75%',
   },
   messageBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderRadius: 20,
     overflow: 'hidden',
   },
   messageBubbleMe: {
     borderBottomRightRadius: 4,
-    backgroundColor: colors.primary, // fallback if gradient fails
   },
   messageBubbleThem: {
-    borderBottomLeftRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderBottomLeftRadius: 4,
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 21,
   },
   messageTextMe: {
     color: 'white',
@@ -345,68 +503,75 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   timestamp: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 4,
   },
   timestampMe: {
     alignSelf: 'flex-end',
-    marginRight: 4,
   },
   timestampThem: {
     alignSelf: 'flex-start',
-    marginLeft: 4,
   },
-
-  // Input Area
   inputArea: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
     gap: spacing.sm,
+    backgroundColor: '#18181B',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(24, 24, 27, 0.9)',
-  },
-  attachBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     paddingHorizontal: spacing.lg,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: spacing.sm,
+    maxHeight: 100,
   },
   input: {
     color: 'white',
-    fontSize: 16,
-    maxHeight: 100,
-  },
-  sendBtnInactiveWrapper: {
-    opacity: 0.8,
+    fontSize: 15,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   sendBtnActiveWrapper: {
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  sendBtnInactiveWrapper: {
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   sendBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  closedFooter: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    backgroundColor: '#18181B',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    gap: spacing.sm,
+  },
+  closedFooterText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+  },
+  backToExploreBtn: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+  },
+  backToExploreText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

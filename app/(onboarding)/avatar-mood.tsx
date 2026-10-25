@@ -1,4 +1,4 @@
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,8 @@ import { spacing } from '@/theme/spacing';
 const BLUE = '#3B82F6';
 
 export default function AvatarMoodScreen() {
-  const { username, alias, avatarId, mood, language, age, setAvatarId, setMood } = useOnboardingStore();
+  const { username, alias, avatarId, mood, language, age, setAvatarId, setMood } =
+    useOnboardingStore();
   const completeOnboarding = useCompleteOnboarding();
 
   const displayAlias = alias || 'You';
@@ -37,7 +38,6 @@ export default function AvatarMoodScreen() {
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.stepIndicator}>
@@ -52,7 +52,9 @@ export default function AvatarMoodScreen() {
         >
           {/* Title */}
           <Animated.View entering={FadeIn.duration(600)}>
-            <Heading level={1} style={styles.title}>Your Vibe</Heading>
+            <Heading level={1} style={styles.title}>
+              Your Vibe
+            </Heading>
             <Text style={styles.subtitle}>
               Choose an avatar and set your current mood to start matching.
             </Text>
@@ -103,25 +105,35 @@ export default function AvatarMoodScreen() {
 
           {/* Footer */}
           <Animated.View entering={FadeInDown.duration(500).delay(450)} style={styles.footer}>
-            <Pressable 
-              style={[styles.submitBtn, !mood && styles.submitBtnDisabled]} 
+            <Pressable
+              style={[styles.submitBtn, !mood && styles.submitBtnDisabled]}
               onPress={handleFinish}
               disabled={!mood || completeOnboarding.isPending}
             >
               {mood ? (
-                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
               ) : null}
               {completeOnboarding.isPending ? (
-                <Text style={styles.submitBtnText}>Setting up...</Text>
+                <ActivityIndicator color="white" />
               ) : (
                 <>
-                  <Text style={[styles.submitBtnText, !mood && styles.submitBtnTextDisabled]}>Complete Setup</Text>
-                  <Ionicons name="sparkles" size={20} color={mood ? "white" : "rgba(255,255,255,0.3)"} />
+                  <Text style={[styles.submitBtnText, !mood && styles.submitBtnTextDisabled]}>
+                    Complete Setup
+                  </Text>
+                  <Ionicons
+                    name="sparkles"
+                    size={20}
+                    color={mood ? 'white' : 'rgba(255,255,255,0.3)'}
+                  />
                 </>
               )}
             </Pressable>
           </Animated.View>
-
         </ScrollView>
       </SafeAreaView>
     </View>

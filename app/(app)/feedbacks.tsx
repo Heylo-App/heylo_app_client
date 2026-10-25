@@ -1,7 +1,7 @@
 import { StyleSheet, View, ScrollView, Pressable, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -15,12 +15,12 @@ const EMERALD = '#10B981';
 const AMBER = '#F59E0B';
 
 const MOCK_FEEDBACKS = [
-  { id: '1', text: "You make me smile 😊", time: "2h ago", color: colors.primary },
-  { id: '2', text: "You're so real", time: "5h ago", color: colors.primary },
-  { id: '3', text: "I miss talking to you", time: "1d ago", color: BLUE },
-  { id: '4', text: "Best vibes always ✨", time: "2d ago", color: EMERALD },
-  { id: '5', text: "You always know how to make people feel heard.", time: "3d ago", color: AMBER },
-  { id: '6', text: "Such a great friend!", time: "1w ago", color: colors.primary },
+  { id: '1', text: 'You make me smile 😊', time: '2h ago', color: colors.primary },
+  { id: '2', text: "You're so real", time: '5h ago', color: colors.primary },
+  { id: '3', text: 'I miss talking to you', time: '1d ago', color: BLUE },
+  { id: '4', text: 'Best vibes always ✨', time: '2d ago', color: EMERALD },
+  { id: '5', text: 'You always know how to make people feel heard.', time: '3d ago', color: AMBER },
+  { id: '6', text: 'Such a great friend!', time: '1w ago', color: colors.primary },
 ];
 
 export default function FeedbacksScreen() {
@@ -31,13 +31,14 @@ export default function FeedbacksScreen() {
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
-        
         {/* Header */}
         <Animated.View entering={FadeInUp.duration(400)} style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </Pressable>
-          <Heading level={2} style={styles.headerTitle}>Anonymous Feedbacks</Heading>
+          <Heading level={2} style={styles.headerTitle}>
+            Anonymous Feedbacks
+          </Heading>
           <View style={styles.placeholder} />
         </Animated.View>
 
@@ -59,14 +60,17 @@ export default function FeedbacksScreen() {
               </View>
 
               {/* Headline */}
-              <Heading level={2} style={styles.askTitle}>How do your friends{`\n`}really feel about you? 💌</Heading>
+              <Heading level={2} style={styles.askTitle}>
+                How do your friends{`\n`}really feel about you? 💌
+              </Heading>
               <Text style={styles.askSubtitle}>
-                Share a link — friends leave honest, anonymous feedback about you. No names, just truth.
+                Share a link — friends leave honest, anonymous feedback about you. No names, just
+                truth.
               </Text>
 
               {/* Preview feedback chips */}
               <View style={styles.askPreviewRow}>
-                {['You make me smile 😊', 'You\'re so real', 'I miss talking to you'].map((q) => (
+                {['You make me smile 😊', "You're so real", 'I miss talking to you'].map((q) => (
                   <View key={q} style={styles.askPreviewChip}>
                     <Text style={styles.askPreviewChipText}>{q}</Text>
                   </View>
@@ -83,7 +87,10 @@ export default function FeedbacksScreen() {
                   })
                 }
               >
-                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                />
                 <Ionicons name="link" size={18} color="white" />
                 <Text style={styles.askCtaText}>Share My Feedback Link</Text>
                 <Ionicons name="share-social" size={16} color="rgba(255,255,255,0.7)" />
@@ -93,19 +100,24 @@ export default function FeedbacksScreen() {
 
           <Animated.View entering={FadeInDown.duration(400).delay(150)} style={styles.infoBanner}>
             <Ionicons name="heart-outline" size={24} color={colors.primary} />
-            <Text style={styles.infoText}>These are honest, anonymous messages from your friends. They cannot be traced back.</Text>
+            <Text style={styles.infoText}>
+              These are honest, anonymous messages from your friends. They cannot be traced back.
+            </Text>
           </Animated.View>
 
           <Text style={styles.sectionTitle}>Received Feedback</Text>
 
           <View style={styles.feedbacksList}>
             {MOCK_FEEDBACKS.map((fb, index) => (
-              <Animated.View 
-                key={fb.id} 
-                entering={FadeInDown.duration(500).delay(200 + index * 100)} 
+              <Animated.View
+                key={fb.id}
+                entering={FadeInDown.duration(500).delay(200 + index * 100)}
                 style={[styles.feedbackCard, { borderColor: `${fb.color}30` }]}
               >
-                <LinearGradient colors={[`${fb.color}15`, 'rgba(0,0,0,0)']} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient
+                  colors={[`${fb.color}15`, 'rgba(0,0,0,0)']}
+                  style={StyleSheet.absoluteFillObject}
+                />
                 <View style={styles.cardHeader}>
                   <View style={[styles.iconWrapper, { backgroundColor: `${fb.color}20` }]}>
                     <Ionicons name="chatbubble-outline" size={18} color={fb.color} />
@@ -125,7 +137,7 @@ export default function FeedbacksScreen() {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#000' },
   safeArea: { flex: 1 },
-  
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,10 +146,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   backButton: {
-    width: 40, height: 40,
+    width: 40,
+    height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: colors.white },
   placeholder: { width: 40 }, // to balance the header
@@ -273,9 +287,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   iconWrapper: {
-    width: 36, height: 36,
+    width: 36,
+    height: 36,
     borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   timeText: {
     fontSize: 12,

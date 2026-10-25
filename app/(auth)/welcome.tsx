@@ -1,8 +1,17 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, Pressable, Dimensions, Image } from 'react-native';
+import { StyleSheet, View, Pressable, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import Animated, { FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -12,10 +21,19 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
 const { width } = Dimensions.get('window');
-const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 
-const FloatingBadge = ({ icon, color, style, delay }: { icon: any; color: string; style: any; delay: number }) => {
+const FloatingBadge = ({
+  icon,
+  color,
+  style,
+  delay,
+}: {
+  icon: any;
+  color: string;
+  style: any;
+  delay: number;
+}) => {
   const translateY = useSharedValue(0);
 
   useEffect(() => {
@@ -25,9 +43,9 @@ const FloatingBadge = ({ icon, color, style, delay }: { icon: any; color: string
         withTiming(8, { duration: 2000 + delay, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
-  }, []);
+  }, [delay, translateY]);
 
   const anim = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
@@ -48,7 +66,6 @@ export default function WelcomeScreen() {
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
-
           {/* ── Hero Area ───────────────────────────────────── */}
           <View style={styles.heroArea}>
             <Animated.View entering={FadeIn.duration(800)} style={styles.logoRow}>
@@ -58,26 +75,57 @@ export default function WelcomeScreen() {
             {/* Floating illustration area */}
             <View style={styles.illustrationArea}>
               {/* Floating Cards with Images */}
-              <Animated.View entering={FadeIn.duration(800).delay(200)} style={[styles.card, styles.leftCard]}>
-                <Image 
-                  source={{ uri: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop&q=80' }} 
-                  style={styles.cardImage} 
+              <Animated.View
+                entering={FadeIn.duration(800).delay(200)}
+                style={[styles.card, styles.leftCard]}
+              >
+                <Image
+                  source={{
+                    uri: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop&q=80',
+                  }}
+                  style={styles.cardImage}
                 />
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.cardGradientOverlay}
+                />
               </Animated.View>
-              
-              <Animated.View entering={FadeIn.duration(800).delay(300)} style={[styles.card, styles.rightCard]}>
-                <Image 
-                  source={{ uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80' }} 
-                  style={styles.cardImage} 
+
+              <Animated.View
+                entering={FadeIn.duration(800).delay(300)}
+                style={[styles.card, styles.rightCard]}
+              >
+                <Image
+                  source={{
+                    uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80',
+                  }}
+                  style={styles.cardImage}
                 />
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.cardGradientOverlay} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.cardGradientOverlay}
+                />
               </Animated.View>
 
               {/* Floating badges */}
-              <FloatingBadge icon="heart" color={colors.primary} style={{ top: '5%', right: '25%' }} delay={0} />
-              <FloatingBadge icon="chatbubble-ellipses" color={colors.primary} style={{ bottom: '20%', left: '5%' }} delay={500} />
-              <FloatingBadge icon="shield-checkmark" color={EMERALD} style={{ bottom: '10%', right: '10%' }} delay={1000} />
+              <FloatingBadge
+                icon="heart"
+                color={colors.primary}
+                style={{ top: '5%', right: '25%' }}
+                delay={0}
+              />
+              <FloatingBadge
+                icon="chatbubble-ellipses"
+                color={colors.primary}
+                style={{ bottom: '20%', left: '5%' }}
+                delay={500}
+              />
+              <FloatingBadge
+                icon="shield-checkmark"
+                color={EMERALD}
+                style={{ bottom: '10%', right: '10%' }}
+                delay={1000}
+              />
             </View>
 
             {/* Title area */}
@@ -91,7 +139,10 @@ export default function WelcomeScreen() {
             </Animated.View>
 
             {/* Feature pills */}
-            <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.featurePills}>
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(500)}
+              style={styles.featurePills}
+            >
               <View style={styles.pill}>
                 <Ionicons name="eye-off" size={14} color={colors.primary} />
                 <Text style={styles.pillText}>100% Anonymous</Text>
@@ -106,20 +157,26 @@ export default function WelcomeScreen() {
           {/* ── Bottom Actions ──────────────────────────────── */}
           <Animated.View entering={FadeInDown.duration(500).delay(600)} style={styles.actions}>
             <Pressable style={styles.primaryBtn} onPress={() => router.push(Routes.auth.register)}>
-              <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+              <LinearGradient
+                colors={colors.primaryGradient}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
               <Ionicons name="heart-outline" size={20} color="white" />
               <Text style={styles.primaryBtnText}>Create Account</Text>
             </Pressable>
 
             <Pressable style={styles.secondaryBtn} onPress={() => router.push(Routes.auth.login)}>
-              <Text style={styles.secondaryBtnText}>Already have an account? <Text style={styles.linkText}>Log In</Text></Text>
+              <Text style={styles.secondaryBtnText}>
+                Already have an account? <Text style={styles.linkText}>Log In</Text>
+              </Text>
             </Pressable>
 
             <Text style={styles.tos}>
               By continuing, you agree to our Terms of Service and Privacy Policy.
             </Text>
           </Animated.View>
-
         </View>
       </SafeAreaView>
     </View>
@@ -259,4 +316,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
 });
-

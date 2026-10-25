@@ -35,12 +35,7 @@ export const Skeleton = memo(function Skeleton({
 
   return (
     <Animated.View
-      style={[
-        styles.skeleton,
-        { width, height, borderRadius: radius },
-        animatedStyle,
-        style,
-      ]}
+      style={[styles.skeleton, { width, height, borderRadius: radius }, animatedStyle, style]}
     />
   );
 });

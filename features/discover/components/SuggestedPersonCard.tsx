@@ -43,7 +43,12 @@ export const SuggestedPersonCard = memo(function SuggestedPersonCard({
           </Text>
         </View>
       </View>
-      <Button title="Say hey" size="sm" variant="secondary" onPress={() => onConnect(user.id, index)} />
+      <Button
+        title="Say hey"
+        size="sm"
+        variant="secondary"
+        onPress={() => onConnect(user.id, index)}
+      />
     </GlassCard>
   );
 });

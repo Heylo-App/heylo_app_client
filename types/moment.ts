@@ -2,6 +2,7 @@ import { MoodType } from '@/constants/moods';
 
 export interface Comment {
   id: string;
+  authorId?: string;
   author: string;
   avatarId: string;
   text: string;
@@ -11,6 +12,7 @@ export interface Comment {
 export interface Moment {
   id: string;
   author: {
+    id?: string;
     name: string;
     handle: string;
     avatarId: string;

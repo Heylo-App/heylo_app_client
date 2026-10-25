@@ -8,6 +8,7 @@ export const endpoints = {
   },
   users: {
     active: '/users/active',
+    toggleActive: '/users/active/toggle',
     suggested: '/users/suggested',
     search: '/users/search',
     profile: (id: string) => `/users/${id}`,
@@ -22,6 +23,7 @@ export const endpoints = {
   },
   chats: {
     list: '/chats',
+    detail: (id: string) => `/chats/${id}`,
     messages: (id: string) => `/chats/${id}/messages`,
     send: (id: string) => `/chats/${id}/messages`,
   },

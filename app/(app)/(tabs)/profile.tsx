@@ -7,6 +7,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -104,7 +106,7 @@ export default function AboutScreen() {
         alias: editAlias,
         username: editUsername,
         language: editLanguage,
-        mood: editMood,
+        mood: editMood as any,
         avatarId: editAvatarId,
       });
       setUser(updatedUser);
@@ -280,13 +282,19 @@ export default function AboutScreen() {
       </SafeAreaView>
 
       {/* ── Edit Profile Modal ────────────────────────────── */}
-      {showEdit && (
+      <Modal
+        visible={showEdit}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowEdit(false)}
+      >
         <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+            <View style={styles.overlay}>
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
               <Pressable style={styles.overlayDismiss} onPress={() => setShowEdit(false)} />
               <Animated.View entering={SlideInDown.duration(350)} style={styles.editSheet}>
                 <View style={styles.sheetHandle} />
@@ -362,17 +370,19 @@ export default function AboutScreen() {
                       colors={colors.primaryGradient}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    <Text style={styles.saveBtnText}>
-                      {isSaving ? 'Saving...' : 'Save Changes'}
-                    </Text>
+                    {isSaving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save Changes</Text>
+                    )}
                   </Pressable>
                   <View style={{ height: 40 }} />
                 </ScrollView>
               </Animated.View>
-            </BlurView>
+            </View>
           </KeyboardAvoidingView>
         </Animated.View>
-      )}
+      </Modal>
     </View>
   );
 }

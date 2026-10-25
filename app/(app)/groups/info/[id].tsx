@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
   Alert,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -174,24 +175,29 @@ export default function GroupInfoScreen() {
   const renderMember = ({ item, index }: { item: MemberInfo; index: number }) => {
     const isAdmin = item._id === info.adminId._id;
     return (
-      <Animated.View entering={FadeInDown.delay(index * 60).duration(300)} style={styles.memberRow}>
-        <Avatar avatarId={item.avatarId} size={44} />
-        <View style={styles.memberInfo}>
-          <View style={styles.memberNameRow}>
-            <Text style={styles.memberAlias}>{item.alias}</Text>
-            {isAdmin && (
-              <View style={styles.adminBadge}>
-                <Text style={styles.adminBadgeText}>Admin</Text>
-              </View>
-            )}
+      <Animated.View entering={FadeInDown.delay(index * 60).duration(300)}>
+        <Pressable
+          style={styles.memberRow}
+          onPress={() => item._id && router.push(`/(app)/users/${item._id}`)}
+        >
+          <Avatar avatarId={item.avatarId} size={44} />
+          <View style={styles.memberInfo}>
+            <View style={styles.memberNameRow}>
+              <Text style={styles.memberAlias}>{item.alias}</Text>
+              {isAdmin && (
+                <View style={styles.adminBadge}>
+                  <Text style={styles.adminBadgeText}>Admin</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.memberUsername}>@{item.username}</Text>
           </View>
-          <Text style={styles.memberUsername}>@{item.username}</Text>
-        </View>
-        {item.mood && (
-          <View style={styles.moodChip}>
-            <Text style={styles.moodText}>{item.mood}</Text>
-          </View>
-        )}
+          {item.mood && (
+            <View style={styles.moodChip}>
+              <Text style={styles.moodText}>{item.mood}</Text>
+            </View>
+          )}
+        </Pressable>
       </Animated.View>
     );
   };
@@ -255,7 +261,10 @@ export default function GroupInfoScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Created by</Text>
       </View>
-      <View style={styles.adminCard}>
+      <Pressable
+        style={styles.adminCard}
+        onPress={() => info.adminId?._id && router.push(`/(app)/users/${info.adminId._id}`)}
+      >
         <Avatar avatarId={info.adminId.avatarId} size={48} />
         <View style={styles.adminInfo}>
           <Text style={styles.adminName}>{info.adminId.alias}</Text>
@@ -264,7 +273,7 @@ export default function GroupInfoScreen() {
         <View style={styles.crownBadge}>
           <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
         </View>
-      </View>
+      </Pressable>
 
       {/* Members Header */}
       <View style={styles.sectionHeader}>
@@ -297,10 +306,16 @@ export default function GroupInfoScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* ─── Add Member Sheet ───────────────────────────── */}
-        {showAddMember && (
+        {/* ─── Add Member Sheet ───────────────────────── */}
+        <Modal
+          visible={showAddMember}
+          transparent
+          animationType="none"
+          onRequestClose={() => setShowAddMember(false)}
+        >
           <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
-            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+            <View style={styles.overlay}>
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
               <Pressable style={styles.overlayDismiss} onPress={() => setShowAddMember(false)} />
               <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -344,11 +359,19 @@ export default function GroupInfoScreen() {
                         const isMember = info.members.some((m) => m._id === item._id);
                         return (
                           <View style={styles.searchResultItem}>
-                            <Avatar avatarId={item.avatarId} alias={item.alias} size={36} />
-                            <View style={styles.searchResultInfo}>
-                              <Text style={styles.searchResultAlias}>{item.alias}</Text>
-                              <Text style={styles.searchResultUsername}>@{item.username}</Text>
-                            </View>
+                            <Pressable
+                              style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                              onPress={() => {
+                                setShowAddMember(false);
+                                router.push(`/(app)/users/${item._id}`);
+                              }}
+                            >
+                              <Avatar avatarId={item.avatarId} alias={item.alias} size={36} />
+                              <View style={styles.searchResultInfo}>
+                                <Text style={styles.searchResultAlias}>{item.alias}</Text>
+                                <Text style={styles.searchResultUsername}>@{item.username}</Text>
+                              </View>
+                            </Pressable>
                             {isMember ? (
                               <Text style={styles.alreadyMemberText}>Joined</Text>
                             ) : (
@@ -375,9 +398,9 @@ export default function GroupInfoScreen() {
                   ) : null}
                 </Animated.View>
               </KeyboardAvoidingView>
-            </BlurView>
+            </View>
           </Animated.View>
-        )}
+        </Modal>
       </SafeAreaView>
     </View>
   );

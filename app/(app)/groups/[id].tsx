@@ -7,12 +7,12 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Clipboard from 'expo-clipboard';
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/theme/colors';
@@ -26,11 +26,29 @@ export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false),
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,12 +101,21 @@ export default function GroupChatScreen() {
     return (
       <View style={[styles.msgContainer, isMe ? styles.msgMe : styles.msgThem]}>
         {!isMe && (
-          <View style={styles.msgAvatar}>
+          <Pressable
+            onPress={() => item.senderId?._id && router.push(`/(app)/users/${item.senderId._id}`)}
+            style={styles.msgAvatar}
+          >
             <Avatar avatarId={item.senderId.avatarId} size={32} />
-          </View>
+          </Pressable>
         )}
         <View style={styles.msgContentWrapper}>
-          {!isMe && <Text style={styles.msgSenderName}>{item.senderId.alias}</Text>}
+          {!isMe && (
+            <Pressable
+              onPress={() => item.senderId?._id && router.push(`/(app)/users/${item.senderId._id}`)}
+            >
+              <Text style={styles.msgSenderName}>{item.senderId.alias}</Text>
+            </Pressable>
+          )}
           <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleThem]}>
             <Text style={styles.msgText}>{item.text}</Text>
           </View>
@@ -100,28 +127,31 @@ export default function GroupChatScreen() {
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/(app)/groups/info/${id}`)}
-            style={styles.headerTitleContainer}
-          >
-            <Heading level={2} style={styles.headerTitle}>
-              {group?.name || 'Group'}
-            </Heading>
-          </Pressable>
-          <Pressable onPress={() => router.push(`/(app)/groups/info/${id}`)} style={styles.iconBtn}>
-            <Ionicons name="information-circle" size={24} color="white" />
-          </Pressable>
-        </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.chatArea}
+      >
+        <View style={{ flex: 1, paddingTop: insets.top }}>
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/(app)/groups/info/${id}`)}
+              style={styles.headerTitleContainer}
+            >
+              <Heading level={2} style={styles.headerTitle}>
+                {group?.name || 'Group'}
+              </Heading>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/(app)/groups/info/${id}`)}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="information-circle" size={24} color="white" />
+            </Pressable>
+          </View>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.chatArea}
-        >
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -131,7 +161,14 @@ export default function GroupChatScreen() {
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
 
-          <View style={styles.inputContainer}>
+          <View
+            style={[
+              styles.inputContainer,
+              {
+                paddingBottom: isKeyboardVisible ? spacing.md : Math.max(insets.bottom, spacing.md),
+              },
+            ]}
+          >
             <TextInput
               style={styles.input}
               value={inputText}
@@ -152,8 +189,8 @@ export default function GroupChatScreen() {
               <Ionicons name="send" size={20} color="white" style={styles.sendIcon} />
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

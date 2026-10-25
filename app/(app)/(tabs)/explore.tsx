@@ -7,19 +7,21 @@ import {
   TextInput,
   Dimensions,
   Alert,
+  Modal,
+  RefreshControl,
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
   FadeIn,
-  SlideOutDown,
+  SlideInDown,
   LinearTransition,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
@@ -28,6 +30,7 @@ import { Button } from '@/components/ui/Button';
 import { PulseDot } from '@/components/ui/PulseDot';
 import { MOOD_OPTIONS, MoodType } from '@/constants/moods';
 import { useAuthStore } from '@/store/auth.store';
+import { useConnectionStore } from '@/store/connection.store';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { usersService, ActiveUser } from '@/services/users.service';
@@ -37,7 +40,9 @@ const { height } = Dimensions.get('window');
 
 export default function ExploreScreen() {
   const { user } = useAuthStore();
-  const router = useRouter();
+  const { incomingRequests, removeRequest } = useConnectionStore();
+
+  const myUserId = user?.id || (user as any)?._id || '';
 
   // States
   const [isActive, setIsActive] = useState(false);
@@ -50,15 +55,40 @@ export default function ExploreScreen() {
 
   // Real data
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchActiveUsers = async () => {
+  const fetchActiveUsers = useCallback(async () => {
     try {
-      const users = await usersService.getActiveUsers();
-      setActiveUsers(users);
+      const res = await usersService.getActiveUsers();
+      setActiveUsers(res.users);
+
+      // Sync active state from backend
+      if (res.myStatus?.isActive) {
+        setIsActive(true);
+        if (res.myStatus.moodId) setMyMood(res.myStatus.moodId);
+        if (res.myStatus.vibe) setMyVibe(res.myStatus.vibe);
+      } else {
+        setIsActive(false);
+      }
     } catch (err) {
       console.error('Failed to fetch active users', err);
     }
+  }, []);
+
+  // Refresh whenever Explore tab gains focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchActiveUsers();
+      if (myUserId) {
+        socketService.registerUser(myUserId);
+      }
+    }, [fetchActiveUsers, myUserId]),
+  );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchActiveUsers();
+    setIsRefreshing(false);
   };
 
   useEffect(() => {
@@ -68,46 +98,55 @@ export default function ExploreScreen() {
       fetchActiveUsers();
     });
 
-    const unsubReq = socketService.onReceiveConnectRequest((req) => {
-      setRequests((prev) => [req, ...prev]);
-      setShowRequests(true);
-    });
-
-    const unsubAccept = socketService.onConnectRequestAccepted(({ chatId }) => {
-      router.push(`/(app)/chat/${chatId}`);
-    });
-
-    const unsubError = socketService.onConnectRequestError(({ requestId, message }) => {
-      Alert.alert('Connection Failed', message);
-      if (requestId) {
-        setRequests((prev) => prev.filter((r) => r.id !== requestId));
-      }
+    const unsubError = socketService.onConnectRequestError(({ message }) => {
+      Alert.alert('Connection Notice', message);
     });
 
     return () => {
       unsubUpdate();
-      unsubReq();
-      unsubAccept();
       unsubError();
     };
-  }, [router]);
+  }, [fetchActiveUsers]);
 
-  const handleToggleActive = (val: boolean) => {
+  const handleToggleActive = async (val: boolean) => {
     if (val) {
       setShowActiveSetup(true);
     } else {
       setIsActive(false);
-      socketService.toggleActive(user!.id, '', '', false);
+      if (myUserId) {
+        socketService.toggleActive(myUserId, '', '', false);
+      }
+      try {
+        await usersService.toggleActive({ isActive: false });
+      } catch (e) {
+        console.error('Error toggling off active via API:', e);
+      }
+      fetchActiveUsers();
     }
   };
 
-  const handleMakeActive = () => {
-    if (myMood && myVibe) {
+  const handleMakeActive = async () => {
+    if (myMood && myVibe && myVibe.trim()) {
+      const trimmedVibe = myVibe.trim();
       setIsActive(true);
       setShowActiveSetup(false);
-      socketService.toggleActive(user!.id, myMood, myVibe, true);
+
+      if (myUserId) {
+        socketService.toggleActive(myUserId, myMood, trimmedVibe, true);
+      }
+
+      try {
+        await usersService.toggleActive({
+          moodId: myMood,
+          vibe: trimmedVibe,
+          isActive: true,
+        });
+      } catch (err) {
+        console.error('Error toggling on active via API:', err);
+      }
+      fetchActiveUsers();
     } else {
-      alert('Please select a mood and enter a vibe.');
+      Alert.alert('Missing Info', 'Please select a mood and enter a vibe.');
     }
   };
 
@@ -130,7 +169,7 @@ export default function ExploreScreen() {
               </Heading>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                 <PulseDot color={colors.primary} />
-                <Text style={styles.dashStatusText}>Active & Visible ({mood.emoji})</Text>
+                <Text style={styles.dashStatusText}>Active & Visible ({mood?.emoji ?? '✨'})</Text>
               </View>
             </View>
           </View>
@@ -145,9 +184,9 @@ export default function ExploreScreen() {
               style={styles.dashRequestsGradient}
             >
               <Text style={styles.dashRequestsText}>View Requests</Text>
-              {requests.length > 0 && (
+              {incomingRequests.length > 0 && (
                 <View style={styles.dashRequestsBadge}>
-                  <Text style={styles.dashRequestsBadgeText}>{requests.length}</Text>
+                  <Text style={styles.dashRequestsBadgeText}>{incomingRequests.length}</Text>
                 </View>
               )}
             </LinearGradient>
@@ -158,7 +197,7 @@ export default function ExploreScreen() {
   };
 
   const renderProfileCard = ({ item, index }: { item: ActiveUser; index: number }) => (
-    <ProfileCard key={item._id} item={item} index={index} myUserId={user!.id} />
+    <ProfileCard key={item._id} item={item} index={index} myUserId={myUserId} />
   );
 
   return (
@@ -197,6 +236,14 @@ export default function ExploreScreen() {
           renderItem={renderProfileCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', marginTop: 40 }}>
               <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.2)" />
@@ -208,16 +255,17 @@ export default function ExploreScreen() {
         />
       </SafeAreaView>
 
-      {/* Setup Active Modal */}
-      {showActiveSetup && (
-        <Animated.View
-          entering={FadeInDown.duration(300)}
-          exiting={SlideOutDown.duration(300)}
-          style={styles.overlayWrapper}
-        >
-          <BlurView intensity={80} tint="dark" style={styles.overlay}>
+      <Modal
+        visible={showActiveSetup}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowActiveSetup(false)}
+      >
+        <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
+          <View style={styles.overlay}>
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
             <Pressable style={styles.overlayClose} onPress={() => setShowActiveSetup(false)} />
-            <View style={styles.sheetContent}>
+            <Animated.View entering={SlideInDown.duration(350)} style={styles.sheetContent}>
               <View style={styles.sheetHandle} />
               <Heading level={2} style={styles.sheetTitle}>
                 Go Active
@@ -254,21 +302,25 @@ export default function ExploreScreen() {
                 onPress={handleMakeActive}
                 style={{ width: '100%', marginTop: spacing.md }}
               />
-            </View>
-          </BlurView>
+            </Animated.View>
+          </View>
         </Animated.View>
-      )}
+      </Modal>
 
-      {/* Requests Modal */}
-      {showRequests && (
-        <Animated.View
-          entering={FadeInDown.duration(300)}
-          exiting={SlideOutDown.duration(300)}
-          style={styles.overlayWrapper}
-        >
-          <BlurView intensity={80} tint="dark" style={styles.overlay}>
+      <Modal
+        visible={showRequests}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowRequests(false)}
+      >
+        <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
+          <View style={styles.overlay}>
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
             <Pressable style={styles.overlayClose} onPress={() => setShowRequests(false)} />
-            <View style={[styles.sheetContent, { maxHeight: height * 0.85 }]}>
+            <Animated.View
+              entering={SlideInDown.duration(350)}
+              style={[styles.sheetContent, { maxHeight: height * 0.85 }]}
+            >
               <View style={styles.sheetHandle} />
               <Heading level={2} style={styles.sheetTitle}>
                 Requests
@@ -276,12 +328,18 @@ export default function ExploreScreen() {
               <Text style={styles.sheetSubtitle}>People who want to connect with you</Text>
 
               <FlatList
-                data={requests}
+                data={incomingRequests}
                 keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing['4xl'] }}
                 ListEmptyComponent={
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                  <Text
+                    style={{
+                      color: 'rgba(255,255,255,0.4)',
+                      textAlign: 'center',
+                      paddingVertical: spacing.xl,
+                    }}
+                  >
                     No requests right now.
                   </Text>
                 }
@@ -290,19 +348,20 @@ export default function ExploreScreen() {
                     item={item}
                     onAccept={() => {
                       socketService.acceptConnectRequest(item.id);
-                      setRequests((prev) => prev.filter((r) => r.id !== item.id));
+                      removeRequest(item.id);
+                      setShowRequests(false);
                     }}
                     onDecline={() => {
                       socketService.declineConnectRequest(item.id);
-                      setRequests((prev) => prev.filter((r) => r.id !== item.id));
+                      removeRequest(item.id);
                     }}
                   />
                 )}
               />
-            </View>
-          </BlurView>
+            </Animated.View>
+          </View>
         </Animated.View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -316,23 +375,22 @@ const RequestCard = ({
   onAccept: () => void;
   onDecline: () => void;
 }) => {
+  const router = useRouter();
   const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
   const [timeLeft, setTimeLeft] = useState(15);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    // Calculate remaining time based on expiresAt
+    const expiresAtMs = new Date(item.expiresAt).getTime();
     const updateTime = () => {
-      const remaining = Math.max(
-        0,
-        Math.floor((new Date(item.expiresAt).getTime() - Date.now()) / 1000),
-      );
+      const remaining = Math.max(0, Math.ceil((expiresAtMs - Date.now()) / 1000));
       setTimeLeft(remaining);
-      if (remaining === 0) onDecline();
+      if (remaining <= 0) {
+        onDecline();
+      }
     };
 
     updateTime();
-    timer = setInterval(updateTime, 1000);
+    const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, [item.expiresAt, onDecline]);
 
@@ -343,17 +401,26 @@ const RequestCard = ({
         <Animated.View style={[styles.progressBarFill, { width: `${(timeLeft / 15) * 100}%` }]} />
       </View>
 
-      <View style={[styles.requestTopRow, { marginTop: 8 }]}>
+      <Pressable
+        style={[styles.requestTopRow, { marginTop: 8 }]}
+        onPress={() => item.senderId && router.push(`/(app)/users/${item.senderId}`)}
+      >
         <Avatar avatarId={item.avatarId} alias={item.alias} size={40} />
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
           <Heading level={3} style={{ fontSize: 16, color: 'white' }}>
             {item.alias}
           </Heading>
           <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-            {mood.label} {mood.emoji}
+            {mood?.label ?? 'Chilling'} {mood?.emoji ?? '✨'}
           </Text>
         </View>
-      </View>
+        <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+      </Pressable>
+      {item.vibe ? (
+        <Text style={[styles.vibeText, { marginTop: 4, marginBottom: spacing.sm }]}>
+          &quot;{item.vibe}&quot;
+        </Text>
+      ) : null}
       <View style={styles.requestActions}>
         <Pressable onPress={onDecline} style={styles.reqBtnDecline}>
           <Text style={styles.reqBtnDeclineText}>Decline</Text>
@@ -375,13 +442,84 @@ const ProfileCard = ({
   index: number;
   myUserId: string;
 }) => {
+  const router = useRouter();
   const mood = MOOD_OPTIONS.find((m) => m.id === item.moodId) || MOOD_OPTIONS[0];
   const [requested, setRequested] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [activeReqId, setActiveReqId] = useState<string | null>(null);
+
+  const targetUserId =
+    (item.userId as any)?._id ||
+    (item.userId as any)?.id ||
+    (typeof item.userId === 'string' ? item.userId : '');
+
+  useEffect(() => {
+    if (!requested) {
+      setCountdown(0);
+      return;
+    }
+    setCountdown(15);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setRequested(false);
+          setActiveReqId(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [requested]);
+
+  useEffect(() => {
+    const unsubSent = socketService.onConnectRequestSent((payload) => {
+      if (payload.receiverId === targetUserId) {
+        setActiveReqId(payload.requestId);
+      }
+    });
+
+    const unsubCancelled = socketService.onConnectRequestCancelled((payload) => {
+      if (!activeReqId || payload.requestId === activeReqId) {
+        setRequested(false);
+        setCountdown(0);
+        setActiveReqId(null);
+      }
+    });
+
+    const unsubError = socketService.onConnectRequestError((payload) => {
+      if (!payload.requestId || payload.requestId === activeReqId) {
+        setRequested(false);
+        setCountdown(0);
+        setActiveReqId(null);
+      }
+    });
+
+    return () => {
+      unsubSent();
+      unsubCancelled();
+      unsubError();
+    };
+  }, [activeReqId, targetUserId]);
 
   const handleConnect = () => {
-    socketService.sendConnectRequest(myUserId, item.userId._id);
+    if (!targetUserId || !myUserId) {
+      Alert.alert('Notice', 'Cannot send request right now. Please verify your connection.');
+      return;
+    }
+    console.log(`[ProfileCard] Sending connect request from ${myUserId} to ${targetUserId}`);
+    socketService.sendConnectRequest(myUserId, targetUserId);
     setRequested(true);
-    setTimeout(() => setRequested(false), 15000); // Reset button after 15s timeout
+  };
+
+  const handleCancel = () => {
+    if (activeReqId) {
+      socketService.cancelConnectRequest(activeReqId);
+    }
+    setRequested(false);
+    setCountdown(0);
+    setActiveReqId(null);
   };
 
   return (
@@ -390,19 +528,40 @@ const ProfileCard = ({
       layout={LinearTransition.springify()}
       style={styles.card}
     >
-      <View style={styles.cardTopRow}>
-        <Avatar avatarId={item.userId.avatarId} alias={item.userId.alias} size={44} />
+      <Pressable
+        style={styles.cardTopRow}
+        onPress={() => {
+          if (targetUserId) {
+            router.push(`/(app)/users/${targetUserId}`);
+          }
+        }}
+      >
+        <Avatar
+          avatarId={item.userId?.avatarId || 'avatar-1'}
+          alias={item.userId?.alias || 'Anonymous'}
+          size={44}
+        />
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
           <Heading level={3} style={styles.alias}>
-            {item.userId.alias}
+            {item.userId?.alias || 'Anonymous'}
           </Heading>
           <Text style={styles.cardMoodLabel}>
-            {mood.label} {mood.emoji}
+            {mood?.label ?? 'Chilling'} {mood?.emoji ?? '✨'}
           </Text>
         </View>
-      </View>
+        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+      </Pressable>
 
       <Text style={styles.vibeText}>&quot;{item.vibe}&quot;</Text>
+
+      {/* Countdown progress bar */}
+      {requested && countdown > 0 && (
+        <View style={[styles.progressBarBg, { marginBottom: spacing.sm }]}>
+          <Animated.View
+            style={[styles.progressBarFill, { width: `${(countdown / 15) * 100}%` }]}
+          />
+        </View>
+      )}
 
       <View style={styles.cardActions}>
         <Pressable
@@ -410,8 +569,16 @@ const ProfileCard = ({
           style={[styles.connectBtn, requested && styles.connectingBtn]}
           disabled={requested}
         >
-          <Text style={styles.connectBtnText}>{requested ? 'Request Sent' : 'Connect'}</Text>
+          <Text style={styles.connectBtnText}>
+            {requested ? `Waiting... (${countdown}s)` : 'Connect'}
+          </Text>
         </Pressable>
+
+        {requested && (
+          <Pressable onPress={handleCancel} style={styles.cancelRequestBtn}>
+            <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+        )}
       </View>
     </Animated.View>
   );
@@ -577,6 +744,14 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 14,
+  },
+  cancelRequestBtn: {
+    height: 40,
+    width: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Overlays

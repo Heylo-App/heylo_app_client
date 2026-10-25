@@ -1,12 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
 import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
@@ -17,8 +25,14 @@ import { colors } from '@/theme/colors';
 
 const BLUE = '#3B82F6';
 
+const LANGUAGE_OPTIONS = [
+  { label: 'English', value: 'English' },
+  { label: 'Hindi', value: 'Hindi' },
+];
+
 export default function ProfileDetailsScreen() {
   const router = useRouter();
+  const onboardingStore = useOnboardingStore();
   const setProfileDetails = useOnboardingStore((s) => s.setProfileDetails);
 
   const {
@@ -28,10 +42,10 @@ export default function ProfileDetailsScreen() {
   } = useForm<ProfileDetailsFormData>({
     resolver: zodResolver(profileDetailsSchema),
     defaultValues: {
-      username: '',
-      alias: '',
-      language: '',
-      age: '',
+      username: onboardingStore.username || '',
+      alias: onboardingStore.alias || '',
+      language: onboardingStore.language || '',
+      age: onboardingStore.age || '',
     },
   });
 
@@ -68,8 +82,9 @@ export default function ProfileDetailsScreen() {
           >
             {/* Title */}
             <Animated.View entering={FadeIn.duration(600)}>
-              
-              <Heading level={1} style={styles.title}>Your Identity</Heading>
+              <Heading level={1} style={styles.title}>
+                Your Identity
+              </Heading>
               <Text style={styles.subtitle}>
                 Set up your anonymous identity. This is what others will see.
               </Text>
@@ -124,14 +139,13 @@ export default function ProfileDetailsScreen() {
               <Controller
                 control={control}
                 name="language"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
+                render={({ field: { onChange, value } }) => (
+                  <Dropdown
                     label="Language Preference"
-                    placeholder="e.g. English"
-                    autoCapitalize="words"
+                    placeholder="Select language"
                     value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
+                    options={LANGUAGE_OPTIONS}
+                    onSelect={onChange}
                     error={errors.language?.message}
                   />
                 )}
@@ -157,7 +171,12 @@ export default function ProfileDetailsScreen() {
             {/* Footer */}
             <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.footer}>
               <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={[BLUE, '#1D4ED8']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <LinearGradient
+                  colors={[BLUE, '#1D4ED8']}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
                 <Text style={styles.submitBtnText}>Next Step</Text>
                 <Ionicons name="arrow-forward" size={20} color="white" />
               </Pressable>

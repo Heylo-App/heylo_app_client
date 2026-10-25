@@ -30,8 +30,18 @@ export const chatsService = {
     return data.data;
   },
 
+  async getChat(chatId: string): Promise<Chat> {
+    const { data } = await apiClient.get(endpoints.chats.detail(chatId));
+    return data.data;
+  },
+
   async getMessages(chatId: string): Promise<ChatMessage[]> {
     const { data } = await apiClient.get(endpoints.chats.messages(chatId));
+    return data.data;
+  },
+
+  async createOrGetChat(recipientId: string): Promise<Chat> {
+    const { data } = await apiClient.post(endpoints.chats.list, { recipientId });
     return data.data;
   },
 };

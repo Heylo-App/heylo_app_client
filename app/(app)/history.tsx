@@ -1,7 +1,16 @@
 import { useEffect } from 'react';
 import { StyleSheet, View, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, Easing, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +20,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
 
 // ── Mock Chat History Data ────────────────────────────────────
@@ -117,12 +125,12 @@ const PulseDot = ({ color }: { color: string }) => {
     scale.value = withRepeat(
       withSequence(
         withTiming(1.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
-  }, []);
+  }, [scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -131,7 +139,12 @@ const PulseDot = ({ color }: { color: string }) => {
 
   return (
     <View style={{ width: 8, height: 8 }}>
-      <Animated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color }, animatedStyle]} />
+      <Animated.View
+        style={[
+          { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color },
+          animatedStyle,
+        ]}
+      />
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
     </View>
   );
@@ -141,7 +154,7 @@ const PulseDot = ({ color }: { color: string }) => {
 export default function HistoryScreen() {
   const router = useRouter();
 
-  const onlineCount = CHAT_HISTORY.filter(c => c.isOnline).length;
+  const onlineCount = CHAT_HISTORY.filter((c) => c.isOnline).length;
   const totalMatches = CHAT_HISTORY.length;
 
   const handleOpenChat = (chatId: string) => {
@@ -151,10 +164,7 @@ export default function HistoryScreen() {
   const renderChatItem = ({ item, index }: { item: ChatHistory; index: number }) => {
     return (
       <Animated.View entering={FadeInDown.duration(400).delay(index * 80)}>
-        <Pressable 
-          style={styles.chatItem}
-          onPress={() => handleOpenChat(item.id)}
-        >
+        <Pressable style={styles.chatItem} onPress={() => handleOpenChat(item.id)}>
           {/* Avatar with online indicator */}
           <View style={styles.avatarContainer}>
             <Avatar avatarId={item.avatarId} alias={item.alias} size={52} />
@@ -172,7 +182,7 @@ export default function HistoryScreen() {
             <View style={styles.chatBottomRow}>
               <Text style={styles.chatMood}>{item.mood}</Text>
             </View>
-            <Text 
+            <Text
               style={[styles.chatLastMessage, item.unread > 0 && styles.chatLastMessageUnread]}
               numberOfLines={1}
             >
@@ -183,7 +193,10 @@ export default function HistoryScreen() {
           {/* Unread badge */}
           {item.unread > 0 && (
             <View style={styles.unreadBadge}>
-              <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} />
+              <LinearGradient
+                colors={colors.primaryGradient}
+                style={StyleSheet.absoluteFillObject}
+              />
               <Text style={styles.unreadText}>{item.unread}</Text>
             </View>
           )}
@@ -202,7 +215,9 @@ export default function HistoryScreen() {
           </Pressable>
         </View>
         <View style={styles.headerCenter}>
-          <Heading level={1} style={styles.title}>Connections</Heading>
+          <Heading level={1} style={styles.title}>
+            Connections
+          </Heading>
           <Text style={styles.subtitle}>Your chat history</Text>
         </View>
         <View style={styles.headerRight} />
@@ -212,12 +227,16 @@ export default function HistoryScreen() {
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.compactStatsRow}>
         <View style={styles.compactStat}>
           <Ionicons name="people" size={16} color={colors.primary} />
-          <Text style={styles.compactStatText}><Text style={styles.compactStatValue}>{totalMatches}</Text> Matches</Text>
+          <Text style={styles.compactStatText}>
+            <Text style={styles.compactStatValue}>{totalMatches}</Text> Matches
+          </Text>
         </View>
         <View style={styles.compactStatDivider} />
         <View style={styles.compactStat}>
           <PulseDot color={EMERALD} />
-          <Text style={styles.compactStatText}><Text style={styles.compactStatValue}>{onlineCount}</Text> Online Now</Text>
+          <Text style={styles.compactStatText}>
+            <Text style={styles.compactStatValue}>{onlineCount}</Text> Online Now
+          </Text>
         </View>
       </Animated.View>
 
@@ -238,18 +257,13 @@ export default function HistoryScreen() {
         <Ionicons name="chatbubble-ellipses-outline" size={48} color="rgba(255,255,255,0.2)" />
       </View>
       <Text style={styles.emptyTitle}>No connections yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start matching to find your first connection!
-      </Text>
+      <Text style={styles.emptySubtitle}>Start matching to find your first connection!</Text>
     </View>
   );
 
   return (
     <View style={styles.mainContainer}>
-      <LinearGradient
-        colors={['#18181B', '#000000']}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
         <FlatList
           data={CHAT_HISTORY}

@@ -6,12 +6,14 @@ import {
   Pressable,
   TextInput,
   Share,
-  KeyboardAvoidingView,
   Platform,
   Dimensions,
   RefreshControl,
+  Modal,
+  Keyboard,
+  LayoutAnimation,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -53,6 +55,7 @@ const MomentItem = ({
   onComment: () => void;
   onShare: () => void;
 }) => {
+  const router = useRouter();
   const scale = useSharedValue(1);
 
   const handleLike = () => {
@@ -64,9 +67,15 @@ const MomentItem = ({
     transform: [{ scale: scale.value }],
   }));
 
+  const handleOpenAuthor = () => {
+    if (item.author.id) {
+      router.push(`/(app)/users/${item.author.id}`);
+    }
+  };
+
   return (
     <View style={styles.momentCard}>
-      <View style={styles.momentHeader}>
+      <Pressable onPress={handleOpenAuthor} style={styles.momentHeader}>
         <Avatar avatarId={item.author.avatarId} alias={item.author.name} size={40} />
         <View style={styles.authorInfo}>
           <View style={styles.nameRow}>
@@ -77,7 +86,7 @@ const MomentItem = ({
           </View>
           <Text style={styles.authorHandle}>{item.author.handle}</Text>
         </View>
-      </View>
+      </Pressable>
 
       <Text style={styles.momentContent}>{item.content}</Text>
 
@@ -125,12 +134,38 @@ export default function HomeScreen() {
   const [isCommenting, setIsCommenting] = useState(false);
   const commentInputRef = useRef<TextInput>(null);
 
+  const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // Create moment modal state
   const [showCreate, setShowCreate] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
 
-  const myName = user?.alias || user?.name || 'Me';
+  const myName = user?.alias || user?.username || 'Me';
   const myAvatar = user?.avatarId || 'avatar-1';
 
   // ─── Data Fetching ──────────────────────────────────
@@ -184,7 +219,12 @@ export default function HomeScreen() {
   const openComments = (id: string) => {
     setCommentMomentId(id);
     setCommentText('');
-    setTimeout(() => commentInputRef.current?.focus(), 400);
+    setTimeout(() => commentInputRef.current?.focus(), 300);
+  };
+
+  const closeComments = () => {
+    Keyboard.dismiss();
+    setCommentMomentId(null);
   };
 
   const postComment = async () => {
@@ -297,141 +337,214 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* ─── Create Moment Modal ─────────────────────── */}
-        {showCreate && (
+        <Modal
+          visible={showCreate}
+          transparent
+          animationType="none"
+          onRequestClose={() => {
+            Keyboard.dismiss();
+            setShowCreate(false);
+          }}
+          statusBarTranslucent
+        >
           <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
-            <BlurView intensity={60} tint="dark" style={styles.overlay}>
-              <Pressable style={styles.overlayDismiss} onPress={() => setShowCreate(false)} />
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ width: '100%' }}
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Pressable
+              style={styles.overlayDismiss}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowCreate(false);
+              }}
+            />
+
+            <View
+              style={[
+                styles.sheetContainer,
+                {
+                  paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0,
+                },
+              ]}
+              pointerEvents="box-none"
+            >
+              <Animated.View
+                entering={SlideInDown.duration(350)}
+                style={[
+                  styles.createSheet,
+                  {
+                    paddingBottom:
+                      keyboardHeight > 0 ? spacing.lg : Math.max(insets.bottom, spacing.lg),
+                  },
+                ]}
               >
-                <Animated.View entering={SlideInDown.duration(350)} style={styles.createSheet}>
-                  <View style={styles.sheetHandle} />
-                  <Heading level={2} style={styles.sheetTitle}>
-                    New Moment
-                  </Heading>
-                  <Text style={styles.sheetSubtitle}>Share what&apos;s on your mind</Text>
+                <View style={styles.sheetHandle} />
+                <Heading level={2} style={styles.sheetTitle}>
+                  New Moment
+                </Heading>
+                <Text style={styles.sheetSubtitle}>Share what&apos;s on your mind</Text>
 
-                  <View style={styles.createAuthorRow}>
-                    <Avatar avatarId={myAvatar} alias={myName} size={36} />
-                    <Text style={styles.createAuthorName}>{myName}</Text>
-                  </View>
+                <View style={styles.createAuthorRow}>
+                  <Avatar avatarId={myAvatar} alias={myName} size={36} />
+                  <Text style={styles.createAuthorName}>{myName}</Text>
+                </View>
 
-                  <TextInput
-                    style={styles.createInput}
-                    placeholder="What's happening?"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    value={newContent}
-                    onChangeText={setNewContent}
-                    multiline
-                    maxLength={280}
-                    autoFocus
-                  />
+                <TextInput
+                  style={styles.createInput}
+                  placeholder="What's happening?"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  value={newContent}
+                  onChangeText={setNewContent}
+                  multiline
+                  maxLength={280}
+                  autoFocus
+                />
 
-                  <View style={styles.createFooter}>
-                    <Text style={styles.charCount}>{newContent.length}/280</Text>
-                    <Pressable
-                      style={[
-                        styles.postBtn,
-                        (!newContent.trim() || isPosting) && styles.postBtnDisabled,
-                      ]}
-                      onPress={handleCreateMoment}
-                      disabled={!newContent.trim() || isPosting}
-                    >
-                      <LinearGradient
-                        colors={
-                          newContent.trim() && !isPosting
-                            ? colors.primaryGradient
-                            : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']
-                        }
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      <Text style={styles.postBtnText}>{isPosting ? 'Posting...' : 'Post'}</Text>
-                    </Pressable>
-                  </View>
-                </Animated.View>
-              </KeyboardAvoidingView>
-            </BlurView>
+                <View style={styles.createFooter}>
+                  <Text style={styles.charCount}>{newContent.length}/280</Text>
+                  <Pressable
+                    style={[
+                      styles.postBtn,
+                      (!newContent.trim() || isPosting) && styles.postBtnDisabled,
+                    ]}
+                    onPress={handleCreateMoment}
+                    disabled={!newContent.trim() || isPosting}
+                  >
+                    <LinearGradient
+                      colors={
+                        newContent.trim() && !isPosting
+                          ? colors.primaryGradient
+                          : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.1)']
+                      }
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Text style={styles.postBtnText}>{isPosting ? 'Posting...' : 'Post'}</Text>
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </View>
           </Animated.View>
-        )}
+        </Modal>
 
         {/* ─── Comment Sheet ───────────────────────────── */}
-        {commentMomentId && commentMoment && (
+        <Modal
+          visible={!!commentMomentId && !!commentMoment}
+          transparent
+          animationType="none"
+          onRequestClose={closeComments}
+          statusBarTranslucent
+        >
           <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
-            <BlurView intensity={60} tint="dark" style={styles.overlay}>
-              <Pressable style={styles.overlayDismiss} onPress={() => setCommentMomentId(null)} />
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ width: '100%' }}
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <Pressable style={styles.overlayDismiss} onPress={closeComments} />
+
+            <View
+              style={[
+                styles.sheetContainer,
+                {
+                  paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0,
+                },
+              ]}
+              pointerEvents="box-none"
+            >
+              <Animated.View
+                entering={SlideInDown.duration(350)}
+                style={[
+                  styles.commentSheet,
+                  {
+                    maxHeight: Math.max(
+                      240,
+                      SCREEN_HEIGHT - (keyboardHeight > 0 ? keyboardHeight : 0) - insets.top - 40,
+                    ),
+                    paddingBottom:
+                      keyboardHeight > 0 ? spacing.md : Math.max(insets.bottom, spacing.md),
+                  },
+                ]}
               >
-                <Animated.View entering={SlideInDown.duration(350)} style={styles.commentSheet}>
-                  <View style={styles.sheetHandle} />
-                  <View style={styles.commentSheetHeader}>
-                    <Heading level={3} style={styles.sheetTitle}>
-                      Comments
-                    </Heading>
-                    <Pressable onPress={() => setCommentMomentId(null)}>
-                      <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
-                    </Pressable>
-                  </View>
+                <View style={styles.sheetHandle} />
+                <View style={styles.commentSheetHeader}>
+                  <Heading level={3} style={styles.sheetTitle}>
+                    Comments
+                  </Heading>
+                  <Pressable onPress={closeComments} hitSlop={12}>
+                    <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                </View>
 
-                  {/* Existing comments */}
-                  <FlatList
-                    data={commentMoment.comments}
-                    keyExtractor={(c) => c.id}
-                    style={styles.commentList}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                      <View style={styles.noComments}>
-                        <Text style={styles.noCommentsText}>No comments yet. Be the first!</Text>
-                      </View>
-                    }
-                    renderItem={({ item: c }) => (
-                      <View style={styles.commentItem}>
+                {/* Existing comments */}
+                <FlatList
+                  data={commentMoment?.comments}
+                  keyExtractor={(c) => c.id}
+                  style={styles.commentList}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                  ListEmptyComponent={
+                    <View style={styles.noComments}>
+                      <Text style={styles.noCommentsText}>No comments yet. Be the first!</Text>
+                    </View>
+                  }
+                  renderItem={({ item: c }) => (
+                    <View style={styles.commentItem}>
+                      <Pressable
+                        onPress={() => {
+                          if (c.authorId) {
+                            setCommentMomentId(null);
+                            router.push(`/(app)/users/${c.authorId}`);
+                          }
+                        }}
+                      >
                         <Avatar avatarId={c.avatarId} alias={c.author} size={28} />
-                        <View style={styles.commentBody}>
-                          <View style={styles.commentNameRow}>
+                      </Pressable>
+                      <View style={styles.commentBody}>
+                        <View style={styles.commentNameRow}>
+                          <Pressable
+                            onPress={() => {
+                              if (c.authorId) {
+                                setCommentMomentId(null);
+                                router.push(`/(app)/users/${c.authorId}`);
+                              }
+                            }}
+                          >
                             <Text style={styles.commentAuthor}>{c.author}</Text>
-                            <Text style={styles.commentTime}>
-                              {c.timestamp
-                                ? new Date(c.timestamp).toLocaleDateString()
-                                : 'Just now'}
-                            </Text>
-                          </View>
-                          <Text style={styles.commentText}>{c.text}</Text>
+                          </Pressable>
+                          <Text style={styles.commentTime}>
+                            {c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now'}
+                          </Text>
                         </View>
+                        <Text style={styles.commentText}>{c.text}</Text>
                       </View>
-                    )}
-                  />
+                    </View>
+                  )}
+                />
 
-                  {/* Input */}
-                  <View style={styles.commentInputRow}>
-                    <Avatar avatarId={myAvatar} alias={myName} size={28} />
-                    <TextInput
-                      ref={commentInputRef}
-                      style={styles.commentInput}
-                      placeholder="Add a comment..."
-                      placeholderTextColor="rgba(255,255,255,0.3)"
-                      value={commentText}
-                      onChangeText={setCommentText}
-                      maxLength={200}
-                    />
-                    <Pressable
-                      onPress={postComment}
-                      disabled={!commentText.trim() || isCommenting}
-                      style={[
-                        styles.commentSendBtn,
-                        (!commentText.trim() || isCommenting) && { opacity: 0.3 },
-                      ]}
-                    >
-                      <Ionicons name="send" size={20} color={colors.primary} />
-                    </Pressable>
-                  </View>
-                </Animated.View>
-              </KeyboardAvoidingView>
-            </BlurView>
+                {/* Input */}
+                <View style={styles.commentInputRow}>
+                  <Avatar avatarId={myAvatar} alias={myName} size={28} />
+                  <TextInput
+                    ref={commentInputRef}
+                    style={styles.commentInput}
+                    placeholder="Add a comment..."
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    maxLength={200}
+                    returnKeyType="send"
+                    onSubmitEditing={postComment}
+                  />
+                  <Pressable
+                    onPress={postComment}
+                    disabled={!commentText.trim() || isCommenting}
+                    style={[
+                      styles.commentSendBtn,
+                      (!commentText.trim() || isCommenting) && { opacity: 0.3 },
+                    ]}
+                  >
+                    <Ionicons name="send" size={20} color={colors.primary} />
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </View>
           </Animated.View>
-        )}
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -594,14 +707,17 @@ const styles = StyleSheet.create({
   postBtnDisabled: { opacity: 0.5 },
   postBtnText: { fontSize: 15, fontWeight: '700', color: 'white' },
 
+  sheetContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    width: '100%',
+  },
   commentSheet: {
     backgroundColor: SHEET_BG,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: spacing['2xl'],
     paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    maxHeight: SCREEN_HEIGHT * 0.65,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)',
   },
@@ -611,7 +727,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  commentList: { maxHeight: SCREEN_HEIGHT * 0.35 },
+  commentList: {
+    flexShrink: 1,
+  },
   noComments: { paddingVertical: 30, alignItems: 'center' },
   noCommentsText: { fontSize: 14, color: 'rgba(255,255,255,0.25)' },
 

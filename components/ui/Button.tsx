@@ -1,12 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { memo, useCallback } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  PressableProps,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, PressableProps, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui/Text';
 import { colors } from '@/theme/colors';
@@ -23,7 +17,10 @@ interface ButtonProps extends Omit<PressableProps, 'children'> {
   icon?: React.ReactNode;
 }
 
-const sizeStyles: Record<ButtonSize, { height: number; paddingHorizontal: number; fontSize: number }> = {
+const sizeStyles: Record<
+  ButtonSize,
+  { height: number; paddingHorizontal: number; fontSize: number }
+> = {
   sm: { height: 40, paddingHorizontal: spacing.lg, fontSize: 14 },
   md: { height: 48, paddingHorizontal: spacing.xl, fontSize: 16 },
   lg: { height: 56, paddingHorizontal: spacing['2xl'], fontSize: 16 },
@@ -53,23 +50,23 @@ export const Button = memo(function Button({
   const isDisabled = disabled || loading;
   const sizeStyle = sizeStyles[size];
 
-  const variantStyle = 
-    variant === 'primary' 
-      ? styles.primary 
+  const variantStyle =
+    variant === 'primary'
+      ? styles.primary
       : variant === 'secondary'
-      ? styles.secondary
-      : variant === 'danger'
-      ? styles.danger
-      : styles.ghost;
+        ? styles.secondary
+        : variant === 'danger'
+          ? styles.danger
+          : styles.ghost;
 
-  const textStyle = 
-    variant === 'primary' 
-      ? styles.primaryText 
+  const textStyle =
+    variant === 'primary'
+      ? styles.primaryText
       : variant === 'danger'
-      ? styles.dangerText
-      : variant === 'ghost'
-      ? styles.ghostText
-      : styles.secondaryText;
+        ? styles.dangerText
+        : variant === 'ghost'
+          ? styles.ghostText
+          : styles.secondaryText;
 
   const loadingColor = variant === 'primary' ? colors.black : colors.white;
 

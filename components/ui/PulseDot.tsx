@@ -18,12 +18,12 @@ export const PulseDot = ({ color }: { color: string }) => {
     scale.value = withRepeat(
       withSequence(
         withTiming(1.6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
-  }, []);
+  }, [scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -32,7 +32,12 @@ export const PulseDot = ({ color }: { color: string }) => {
 
   return (
     <View style={{ width: 8, height: 8, marginRight: spacing.sm }}>
-      <Animated.View style={[{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color }, animatedStyle]} />
+      <Animated.View
+        style={[
+          { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: color },
+          animatedStyle,
+        ]}
+      />
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
     </View>
   );

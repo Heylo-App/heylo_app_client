@@ -7,6 +7,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -126,13 +127,19 @@ export default function GroupsScreen() {
       </SafeAreaView>
 
       {/* ── Create Group Modal ────────────────────────────── */}
-      {showCreate && (
+      <Modal
+        visible={showCreate}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowCreate(false)}
+      >
         <Animated.View entering={FadeIn.duration(200)} style={styles.overlayWrapper}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <BlurView intensity={60} tint="dark" style={styles.overlay}>
+            <View style={styles.overlay}>
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
               <Pressable style={styles.overlayDismiss} onPress={() => setShowCreate(false)} />
               <Animated.View entering={SlideInDown.duration(350)} style={styles.sheet}>
                 <View style={styles.sheetHandle} />
@@ -174,10 +181,10 @@ export default function GroupsScreen() {
                   </Text>
                 </Pressable>
               </Animated.View>
-            </BlurView>
+            </View>
           </KeyboardAvoidingView>
         </Animated.View>
-      )}
+      </Modal>
     </View>
   );
 }

@@ -41,7 +41,16 @@ export default function ChatsListScreen() {
     return (
       <Animated.View entering={FadeInDown.duration(400).delay(index * 50)}>
         <Pressable style={styles.chatCard} onPress={() => router.push(`/(app)/chat/${item._id}`)}>
-          <Avatar avatarId={otherParticipant.avatarId} alias={otherParticipant.alias} size={50} />
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (otherParticipant._id) {
+                router.push(`/(app)/users/${otherParticipant._id}`);
+              }
+            }}
+          >
+            <Avatar avatarId={otherParticipant.avatarId} alias={otherParticipant.alias} size={50} />
+          </Pressable>
           <View style={styles.chatInfo}>
             <View style={styles.chatTopRow}>
               <Heading level={3} style={styles.alias}>

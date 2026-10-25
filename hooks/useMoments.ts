@@ -11,9 +11,9 @@ export const momentKeys = {
 export function useMomentsFeed() {
   return useInfiniteQuery({
     queryKey: momentKeys.feed,
-    queryFn: ({ pageParam }) => momentsService.getFeed(pageParam),
+    queryFn: () => momentsService.getFeed(),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
+    getNextPageParam: () => undefined,
   });
 }
 
@@ -32,8 +32,7 @@ export function useToggleLike() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, isLiked }: { id: string; isLiked: boolean }) =>
-      momentsService.toggleLike(id, isLiked),
+    mutationFn: ({ id }: { id: string; isLiked?: boolean }) => momentsService.toggleLike(id),
     onMutate: async ({ id, isLiked }) => {
       await queryClient.cancelQueries({ queryKey: momentKeys.feed });
       const previous = queryClient.getQueryData(momentKeys.feed);
@@ -41,7 +40,7 @@ export function useToggleLike() {
       queryClient.setQueryData(momentKeys.feed, (old: unknown) => {
         if (!old || typeof old !== 'object' || !('pages' in old)) return old;
         const data = old as {
-          pages: Array<{ data: Array<{ id: string; isLiked: boolean; likesCount: number }> }>;
+          pages: { data: { id: string; isLiked: boolean; likesCount: number }[] }[];
         };
         return {
           ...data,

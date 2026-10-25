@@ -32,18 +32,22 @@ export const Avatar = memo(function Avatar({
 }: AvatarProps) {
   const DEFAULT_GRADIENT = ['#8B5CF6', '#EC4899'] as const;
 
-  const gradientColors =
-    (mood ? moodGradients[mood] : AVATAR_COLORS[avatarId]) ?? DEFAULT_GRADIENT;
+  const gradientColors = (mood ? moodGradients[mood] : AVATAR_COLORS[avatarId]) ?? DEFAULT_GRADIENT;
   const [colorStart, colorEnd] = gradientColors;
 
   return (
     <View style={{ width: size, height: size }}>
       <LinearGradient
         colors={[colorStart ?? DEFAULT_GRADIENT[0], colorEnd ?? DEFAULT_GRADIENT[1]]}
-        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }]}
+        style={[
+          styles.avatar,
+          { width: size, height: size, borderRadius: size / 2, overflow: 'hidden' },
+        ]}
       >
-        <Image 
-          source={{ uri: `https://api.dicebear.com/9.x/micah/png?seed=${avatarId}&backgroundColor=transparent` }}
+        <Image
+          source={{
+            uri: `https://api.dicebear.com/9.x/micah/png?seed=${avatarId || alias || 'heylo'}&backgroundColor=transparent`,
+          }}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
         />

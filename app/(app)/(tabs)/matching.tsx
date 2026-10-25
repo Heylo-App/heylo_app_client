@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Dimensions, Image, Pressable } from 'react-native';
+import { StyleSheet, View, Dimensions, Image, Pressable, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -14,7 +14,6 @@ import Animated, {
   interpolate,
   withDelay,
   SlideInDown,
-  SlideOutDown,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -235,18 +234,20 @@ export default function MatchingScreen() {
           </Animated.View>
 
           {/* Mood Selector Overlay */}
-          {showMoodSelector && (
-            <Animated.View
-              entering={SlideInDown.duration(400).springify()}
-              exiting={SlideOutDown.duration(300)}
-              style={styles.blurOverlayWrapper}
-            >
-              <BlurView intensity={80} tint="dark" style={styles.blurOverlay}>
+          <Modal
+            visible={showMoodSelector}
+            transparent
+            animationType="none"
+            onRequestClose={() => setShowMoodSelector(false)}
+          >
+            <Animated.View entering={FadeIn.duration(200)} style={styles.blurOverlayWrapper}>
+              <View style={styles.blurOverlay}>
+                <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
                 <Pressable
                   style={styles.blurOverlayClose}
                   onPress={() => setShowMoodSelector(false)}
                 />
-                <View style={styles.moodSheet}>
+                <Animated.View entering={SlideInDown.duration(350)} style={styles.moodSheet}>
                   <View style={styles.sheetHandle} />
                   <Heading level={2} style={styles.sheetTitle}>
                     What&apos;s your vibe?
@@ -293,10 +294,10 @@ export default function MatchingScreen() {
                       <Ionicons name="arrow-forward" size={20} color="white" />
                     </LinearGradient>
                   </Pressable>
-                </View>
-              </BlurView>
+                </Animated.View>
+              </View>
             </Animated.View>
-          )}
+          </Modal>
         </View>
       </SafeAreaView>
     </GestureHandlerRootView>

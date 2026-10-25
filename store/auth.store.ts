@@ -12,7 +12,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isOnboarded: boolean;
-  setUser: (user: AnonymousProfile | null) => void;
+  setUser: (user: AnonymousProfile | null, token?: string | null) => void;
+  setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   setOnboarded: (value: boolean) => void;
   hydrate: () => Promise<void>;
@@ -26,12 +27,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   isOnboarded: false,
 
-  setUser: (user) =>
-    set({
+  setUser: (user, token) =>
+    set((state) => ({
       user,
+      token: token !== undefined ? token : state.token,
       isAuthenticated: Boolean(user),
       isOnboarded: user?.isOnboarded ?? false,
-    }),
+    })),
+
+  setToken: (token) => set({ token }),
 
   setLoading: (isLoading) => set({ isLoading }),
 

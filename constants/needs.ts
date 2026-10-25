@@ -1,11 +1,4 @@
-export const NEED_TYPES = [
-  'listen',
-  'vent',
-  'advice',
-  'company',
-  'inspire',
-  'laugh',
-] as const;
+export const NEED_TYPES = ['listen', 'vent', 'advice', 'company', 'inspire', 'laugh'] as const;
 
 export type NeedType = (typeof NEED_TYPES)[number];
 

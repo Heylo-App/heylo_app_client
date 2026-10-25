@@ -1,7 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, SafeAreaView, Pressable, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,7 +22,6 @@ import { useVerifyOtp } from '@/hooks/useAuth';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { getApiErrorMessage } from '@/api/client';
-
 
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -63,7 +71,9 @@ export default function VerifyOtpScreen() {
               <View style={styles.iconCircle}>
                 <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
               </View>
-              <Heading level={1} style={styles.title}>Secure Verification</Heading>
+              <Heading level={1} style={styles.title}>
+                Secure Verification
+              </Heading>
               <Text style={styles.subtitle}>
                 We sent a 6-digit code to{'\n'}
                 <Text style={styles.highlight}>{email}</Text>
@@ -105,10 +115,15 @@ export default function VerifyOtpScreen() {
 
             {/* Footer */}
             <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.footer}>
-              <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={colors.primaryGradient} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+              <Pressable style={styles.submitBtn} onPress={onSubmit} disabled={verifyOtp.isPending}>
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
                 {verifyOtp.isPending ? (
-                  <Text style={styles.submitBtnText}>Verifying...</Text>
+                  <ActivityIndicator color="white" />
                 ) : (
                   <>
                     <Text style={styles.submitBtnText}>Verify Code</Text>
@@ -119,7 +134,7 @@ export default function VerifyOtpScreen() {
 
               <Pressable style={styles.resendBtn} onPress={() => alert('Code sent!')}>
                 <Text style={styles.resendText}>
-                  Didn't receive code? <Text style={styles.linkText}>Resend</Text>
+                  Didn&apos;t receive code? <Text style={styles.linkText}>Resend</Text>
                 </Text>
               </Pressable>
             </Animated.View>

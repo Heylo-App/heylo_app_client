@@ -39,9 +39,9 @@ export function useVerifyOtp() {
 
   return useMutation({
     mutationFn: (payload: VerifyOtpPayload) => authService.verifyOtp(payload),
-    onSuccess: (data) => {
-      setUser(data.user);
-      if (data.user.isOnboarded) {
+    onSuccess: (data: any) => {
+      setUser(data.user, data.accessToken);
+      if (data.user?.isOnboarded) {
         router.replace(Routes.app.home);
       } else {
         router.replace(Routes.onboarding.profileDetails);

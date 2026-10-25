@@ -10,10 +10,7 @@ export const loginSchema = z.object({
 });
 
 export const otpSchema = z.object({
-  otp: z
-    .string()
-    .length(6, 'OTP must be 6 digits')
-    .regex(/^\d+$/, 'OTP must contain only numbers'),
+  otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d+$/, 'OTP must contain only numbers'),
 });
 
 export const aliasSchema = z.object({
@@ -24,17 +21,20 @@ export const aliasSchema = z.object({
     .regex(/^[a-zA-Z0-9_\s-]+$/, 'Only letters, numbers, spaces, _ and - allowed'),
 });
 
-export const registerSchema = z.object({
-  email: emailSchema.shape.email,
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+export const registerSchema = z
+  .object({
+    email: emailSchema.shape.email,
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 export const profileDetailsSchema = z.object({
-  username: z.string()
+  username: z
+    .string()
     .min(3, 'Username must be at least 3 characters')
     .max(20, 'Username must be at most 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores allowed'),
