@@ -109,7 +109,7 @@ export default function WelcomeScreen() {
             </View>
 
             {/* Title area */}
-            <Animated.View entering={FadeInDown.duration(600).delay(400)}>
+            <Animated.View entering={FadeInDown.duration(600).delay(400)} style={styles.titleArea}>
               <Heading level={1} style={styles.title}>
                 Authentic expression,{'\n'}zero judgment.
               </Heading>
@@ -215,6 +215,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
+  titleArea: {
+    marginBottom: spacing.sm,
+  },
   title: {
     fontSize: 34,
     fontWeight: '800',
@@ -227,10 +230,14 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: 'rgba(255,255,255,0.6)',
     marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
 
   // ── Actions ───────────────────────────────────────────
-  actions: { gap: spacing.lg },
+  actions: {
+    gap: spacing.lg,
+    marginTop: spacing['3xl'],
+  },
   primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
