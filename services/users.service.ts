@@ -59,8 +59,12 @@ export const usersService = {
     const { data } = await apiClient.post(endpoints.users.toggleActive, payload);
     return data;
   },
-  async searchUsers(query: string): Promise<any[]> {
-    const { data } = await apiClient.get(endpoints.users.search, { params: { q: query } });
+  async searchUsers(query: string, limit: number = 8): Promise<any[]> {
+    const { data } = await apiClient.get(endpoints.users.search, { params: { q: query, limit } });
+    return data.data;
+  },
+  async getUserByUsername(username: string): Promise<UserProfile> {
+    const { data } = await apiClient.get(endpoints.users.byUsername(username));
     return data.data;
   },
   async getUserProfile(id: string): Promise<UserProfile> {

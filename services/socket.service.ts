@@ -198,7 +198,10 @@ class SocketService {
   sendGroupMessage(payload: {
     groupId: string;
     senderId: string;
-    text: string;
+    text?: string;
+    messageType?: 'text' | 'audio';
+    audioData?: string;
+    audioDuration?: number;
     senderAlias: string;
     senderUsername: string;
     senderAvatarId: string;
@@ -325,7 +328,10 @@ class SocketService {
   sendChatMessage(payload: {
     chatId: string;
     senderId: string;
-    text: string;
+    text?: string;
+    messageType?: 'text' | 'audio';
+    audioData?: string;
+    audioDuration?: number;
     senderAlias?: string;
     senderAvatarId?: string;
   }) {

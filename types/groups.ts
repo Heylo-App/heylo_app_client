@@ -19,6 +19,9 @@ export interface GroupMessage {
     avatarId: string;
   };
   text: string;
+  messageType?: 'text' | 'audio';
+  audioData?: string;
+  audioDuration?: number;
   createdAt: string;
 }
 

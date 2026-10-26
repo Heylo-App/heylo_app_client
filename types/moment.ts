@@ -4,8 +4,17 @@ export interface Comment {
   id: string;
   authorId?: string;
   author: string;
+  username?: string;
   avatarId: string;
   text: string;
+  parentId?: string | null;
+  replyToUser?: {
+    id?: string;
+    username?: string;
+    name?: string;
+  } | null;
+  likes: number;
+  isLiked?: boolean;
   timestamp: string;
 }
 

@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
+import { MentionText } from '@/components/ui/MentionText';
 import { Text } from '@/components/ui/Text';
 import type { Moment } from '@/types/moment';
 import { colors } from '@/theme/colors';
@@ -40,9 +41,7 @@ export const MomentCard = memo(function MomentCard({ moment, onLike, onPress }: 
           </Text>
         </View>
       </View>
-      <Text variant="body" style={styles.content}>
-        {moment.content}
-      </Text>
+      <MentionText variant="body" style={styles.content} content={moment.content} />
       <View style={styles.actions}>
         <View style={styles.action} onTouchEnd={handleLike}>
           <Ionicons

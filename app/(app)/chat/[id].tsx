@@ -23,6 +23,10 @@ import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 import { socketService } from '@/services/socket.service';
 import { chatsService, ChatMessage, ChatParticipant } from '@/services/chats.service';
+import { audioPlayerService } from '@/services/audioPlayer.service';
+import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
+import { VoiceMessageBubble } from '@/components/chat/VoiceMessageBubble';
+import { EmojiPicker } from '@/components/chat/EmojiPicker';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -36,6 +40,8 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [otherUser, setOtherUser] = useState<ChatParticipant | null>(null);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isConnectionClosed, setIsConnectionClosed] = useState(false);
   const [connectionClosedReason, setConnectionClosedReason] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -123,6 +129,7 @@ export default function ChatScreen() {
     });
 
     return () => {
+      audioPlayerService.stop();
       socketService.leaveChatRoom(id);
       unsubReceive();
       unsubPeerLeft();
@@ -140,6 +147,22 @@ export default function ChatScreen() {
       chatId: id,
       senderId: currentUserId,
       text,
+      senderAlias: user?.alias,
+      senderAvatarId: user?.avatarId,
+    });
+  };
+
+  const sendVoiceMessage = (audio: { dataUri: string; duration: number }) => {
+    if (isConnectionClosed) return;
+    setIsRecording(false);
+
+    socketService.sendChatMessage({
+      chatId: id,
+      senderId: currentUserId,
+      text: '🎤 Voice message',
+      messageType: 'audio',
+      audioData: audio.dataUri,
+      audioDuration: audio.duration,
       senderAlias: user?.alias,
       senderAvatarId: user?.avatarId,
     });
@@ -215,11 +238,20 @@ export default function ChatScreen() {
                 end={{ x: 1, y: 1 }}
               />
             )}
-            <Text
-              style={[styles.messageText, isMe ? styles.messageTextMe : styles.messageTextThem]}
-            >
-              {item.text}
-            </Text>
+            {item.messageType === 'audio' && item.audioData ? (
+              <VoiceMessageBubble
+                messageId={item._id}
+                audioData={item.audioData}
+                duration={item.audioDuration}
+                isMe={isMe}
+              />
+            ) : (
+              <Text
+                style={[styles.messageText, isMe ? styles.messageTextMe : styles.messageTextThem]}
+              >
+                {item.text}
+              </Text>
+            )}
           </View>
           <Text style={[styles.timestamp, isMe ? styles.timestampMe : styles.timestampThem]}>
             {new Date(item.createdAt).toLocaleTimeString([], {
@@ -297,6 +329,10 @@ export default function ChatScreen() {
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesContainer}
             showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={() => {
+              Keyboard.dismiss();
+              setShowEmojiPicker(false);
+            }}
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
@@ -319,52 +355,95 @@ export default function ChatScreen() {
           ) : (
             <View
               style={[
-                styles.inputArea,
+                styles.footerContainer,
                 {
-                  paddingBottom: isKeyboardVisible
-                    ? spacing.md
-                    : Math.max(insets.bottom, spacing.md),
+                  paddingBottom:
+                    isKeyboardVisible || showEmojiPicker
+                      ? spacing.sm
+                      : Math.max(insets.bottom, spacing.md),
                 },
               ]}
             >
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Type a message..."
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={500}
-                />
-              </View>
+              {isRecording ? (
+                <View style={styles.recordingWrapper}>
+                  <VoiceRecorder onSend={sendVoiceMessage} onCancel={() => setIsRecording(false)} />
+                </View>
+              ) : (
+                <View style={styles.inputArea}>
+                  <View style={styles.inputRow}>
+                    <Pressable
+                      onPress={() => {
+                        if (showEmojiPicker) {
+                          setShowEmojiPicker(false);
+                        } else {
+                          Keyboard.dismiss();
+                          setShowEmojiPicker(true);
+                        }
+                      }}
+                      style={styles.emojiToggleBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={showEmojiPicker ? 'keypad-outline' : 'happy-outline'}
+                        size={24}
+                        color={showEmojiPicker ? colors.primary : 'rgba(255,255,255,0.6)'}
+                      />
+                    </Pressable>
 
-              <Animated.View
-                style={
-                  inputText.trim() ? styles.sendBtnActiveWrapper : styles.sendBtnInactiveWrapper
-                }
-              >
-                <Pressable
-                  style={styles.sendBtn}
-                  onPress={sendMessage}
-                  disabled={!inputText.trim()}
-                >
-                  {inputText.trim() ? (
-                    <LinearGradient
-                      colors={colors.primaryGradient}
-                      style={StyleSheet.absoluteFillObject}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Type a message..."
+                      placeholderTextColor="rgba(255,255,255,0.4)"
+                      value={inputText}
+                      onChangeText={setInputText}
+                      onFocus={() => setShowEmojiPicker(false)}
+                      multiline
+                      maxLength={500}
                     />
-                  ) : null}
-                  <Ionicons
-                    name="paper-plane"
-                    size={20}
-                    color={inputText.trim() ? 'white' : 'rgba(255,255,255,0.3)'}
-                    style={{ marginLeft: 2 }}
-                  />
-                </Pressable>
-              </Animated.View>
+                  </View>
+
+                  {inputText.trim() ? (
+                    <Animated.View style={styles.sendBtnActiveWrapper}>
+                      <Pressable style={styles.sendBtn} onPress={sendMessage}>
+                        <LinearGradient
+                          colors={colors.primaryGradient}
+                          style={StyleSheet.absoluteFillObject}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        />
+                        <Ionicons
+                          name="paper-plane"
+                          size={20}
+                          color="white"
+                          style={{ marginLeft: 2 }}
+                        />
+                      </Pressable>
+                    </Animated.View>
+                  ) : (
+                    <Pressable
+                      style={styles.micBtn}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowEmojiPicker(false);
+                        setIsRecording(true);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="mic" size={22} color="white" />
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
+              {showEmojiPicker && (
+                <EmojiPicker
+                  onSelectEmoji={(emoji) => setInputText((prev) => prev + emoji)}
+                  onBackspace={() =>
+                    setInputText((prev) => (prev.length > 0 ? prev.slice(0, -1) : ''))
+                  }
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              )}
             </View>
           )}
         </View>
@@ -513,43 +592,72 @@ const styles = StyleSheet.create({
   timestampThem: {
     alignSelf: 'flex-start',
   },
-  inputArea: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
+  footerContainer: {
     backgroundColor: '#18181B',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  inputWrapper: {
+  recordingWrapper: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  inputArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  inputRow: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? 6 : 2,
     maxHeight: 100,
   },
+  emojiToggleBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   input: {
+    flex: 1,
     color: 'white',
     fontSize: 15,
+    paddingHorizontal: spacing.xs,
     paddingTop: 0,
     paddingBottom: 0,
   },
   sendBtnActiveWrapper: {
-    borderRadius: 24,
+    borderRadius: 22,
     overflow: 'hidden',
   },
   sendBtnInactiveWrapper: {
-    borderRadius: 24,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   sendBtn: {
     width: 44,
     height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   closedFooter: {
     padding: spacing.lg,

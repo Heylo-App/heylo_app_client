@@ -6,13 +6,85 @@ import { moodGradients } from '@/theme/gradients';
 import { colors } from '@/theme/colors';
 import type { MoodType } from '@/constants/moods';
 
-const AVATAR_COLORS: Record<string, readonly [string, string]> = {
-  'avatar-1': ['#8B5CF6', '#EC4899'],
-  'avatar-2': ['#0EA5E9', '#6366F1'],
-  'avatar-3': ['#10B981', '#3B82F6'],
-  'avatar-4': ['#F59E0B', '#EF4444'],
-  'avatar-5': ['#14B8A6', '#8B5CF6'],
-  'avatar-6': ['#64748B', '#1E293B'],
+export interface ProfessionalAvatar {
+  id: string;
+  name: string;
+  seed: string;
+  role: string;
+  colors: readonly [string, string];
+}
+
+export const PROFESSIONAL_AVATARS: Record<string, ProfessionalAvatar> = {
+  'avatar-1': {
+    id: 'avatar-1',
+    name: 'Alexander',
+    seed: 'Alexander',
+    role: 'Executive',
+    colors: ['#3B82F6', '#1E40AF'], // Executive Blue
+  },
+  'avatar-2': {
+    id: 'avatar-2',
+    name: 'Sophia',
+    seed: 'Sophia',
+    role: 'Product Lead',
+    colors: ['#8B5CF6', '#6D28D9'], // Royal Violet
+  },
+  'avatar-3': {
+    id: 'avatar-3',
+    name: 'Marcus',
+    seed: 'Marcus',
+    role: 'Tech Lead',
+    colors: ['#10B981', '#047857'], // Modern Emerald
+  },
+  'avatar-4': {
+    id: 'avatar-4',
+    name: 'Elena',
+    seed: 'Elena',
+    role: 'Consultant',
+    colors: ['#EC4899', '#BE185D'], // Rose Professional
+  },
+  'avatar-5': {
+    id: 'avatar-5',
+    name: 'David',
+    seed: 'David',
+    role: 'Designer',
+    colors: ['#F59E0B', '#B45309'], // Warm Amber
+  },
+  'avatar-6': {
+    id: 'avatar-6',
+    name: 'Maya',
+    seed: 'Maya',
+    role: 'Strategist',
+    colors: ['#06B6D4', '#0E7490'], // Cyan Corporate
+  },
+  'avatar-7': {
+    id: 'avatar-7',
+    name: 'James',
+    seed: 'James',
+    role: 'Engineer',
+    colors: ['#6366F1', '#4338CA'], // Indigo Professional
+  },
+  'avatar-8': {
+    id: 'avatar-8',
+    name: 'Chloe',
+    seed: 'Chloe',
+    role: 'Analyst',
+    colors: ['#14B8A6', '#0F766E'], // Teal Modern
+  },
+  'avatar-9': {
+    id: 'avatar-9',
+    name: 'Lucas',
+    seed: 'Lucas',
+    role: 'Founder',
+    colors: ['#64748B', '#334155'], // Slate Steel
+  },
+  'avatar-10': {
+    id: 'avatar-10',
+    name: 'Zara',
+    seed: 'Zara',
+    role: 'Director',
+    colors: ['#F43F5E', '#9F1239'], // Crimson Executive
+  },
 };
 
 interface AvatarProps {
@@ -30,10 +102,14 @@ export const Avatar = memo(function Avatar({
   mood,
   showOnline,
 }: AvatarProps) {
-  const DEFAULT_GRADIENT = ['#8B5CF6', '#EC4899'] as const;
+  const DEFAULT_GRADIENT = ['#3B82F6', '#1E40AF'] as const;
 
-  const gradientColors = (mood ? moodGradients[mood] : AVATAR_COLORS[avatarId]) ?? DEFAULT_GRADIENT;
+  const profAvatar = PROFESSIONAL_AVATARS[avatarId];
+  const gradientColors = (mood ? moodGradients[mood] : profAvatar?.colors) ?? DEFAULT_GRADIENT;
   const [colorStart, colorEnd] = gradientColors;
+
+  const seed = profAvatar?.seed || avatarId || alias || 'Alexander';
+  const uri = `https://api.dicebear.com/9.x/avataaars/png?seed=${seed}&backgroundColor=transparent`;
 
   return (
     <View style={{ width: size, height: size }}>
@@ -44,13 +120,7 @@ export const Avatar = memo(function Avatar({
           { width: size, height: size, borderRadius: size / 2, overflow: 'hidden' },
         ]}
       >
-        <Image
-          source={{
-            uri: `https://api.dicebear.com/9.x/micah/png?seed=${avatarId || alias || 'heylo'}&backgroundColor=transparent`,
-          }}
-          style={{ width: '100%', height: '100%' }}
-          resizeMode="cover"
-        />
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       </LinearGradient>
       {showOnline ? <View style={[styles.online, { right: 0, bottom: 0 }]} /> : null}
     </View>
@@ -73,4 +143,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export const AVATAR_OPTIONS = Object.keys(AVATAR_COLORS);
+export const AVATAR_OPTIONS = Object.keys(PROFESSIONAL_AVATARS);

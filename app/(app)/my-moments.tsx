@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -29,12 +29,15 @@ import { useRouter } from 'expo-router';
 
 import { Text, Heading } from '@/components/ui/Text';
 import { Avatar } from '@/components/ui/Avatar';
+import { MentionText } from '@/components/ui/MentionText';
+import { MentionSuggestions } from '@/components/ui/MentionSuggestions';
+import { useMentionLookup } from '@/hooks/useMentionLookup';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 import { momentsService } from '@/services/moments.service';
 import { socketService } from '@/services/socket.service';
-import type { Moment } from '@/types/moment';
+import type { Moment, Comment } from '@/types/moment';
 import { HomeSkeleton } from '@/components/skeletons';
 
 const SHEET_BG = '#111115';
@@ -73,7 +76,7 @@ const MyMomentCard = ({
         </View>
       </View>
 
-      <Text style={styles.cardContent}>{item.content}</Text>
+      <MentionText content={item.content} style={styles.cardContent} />
 
       <View style={styles.cardActions}>
         <Pressable style={styles.actionBtn} onPress={handleLike}>
@@ -109,7 +112,15 @@ export default function MyMomentsScreen() {
   const [commentMomentId, setCommentMomentId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    commentId: string;
+    authorId?: string;
+    author: string;
+    username?: string;
+  } | null>(null);
   const commentInputRef = useRef<TextInput>(null);
+
+  const commentMentions = useMentionLookup();
 
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -220,21 +231,99 @@ export default function MyMomentsScreen() {
   const openComments = (id: string) => {
     setCommentMomentId(id);
     setCommentText('');
+    setReplyingTo(null);
+    commentMentions.resetMentions();
     setTimeout(() => commentInputRef.current?.focus(), 300);
   };
 
   const closeComments = () => {
     Keyboard.dismiss();
     setCommentMomentId(null);
+    setReplyingTo(null);
+    commentMentions.resetMentions();
+  };
+
+  const handleReplyTo = (c: Comment) => {
+    setReplyingTo({
+      commentId: c.id,
+      authorId: c.authorId,
+      author: c.author,
+      username: c.username,
+    });
+    commentInputRef.current?.focus();
+  };
+
+  const toggleCommentLike = async (momentId: string, commentId: string) => {
+    // Optimistic update
+    setMoments((prev) =>
+      prev.map((m) => {
+        if (m.id === momentId) {
+          return {
+            ...m,
+            comments: m.comments.map((c) => {
+              if (c.id === commentId) {
+                const isLiked = !c.isLiked;
+                const likes = isLiked ? (c.likes || 0) + 1 : Math.max(0, (c.likes || 0) - 1);
+                return { ...c, isLiked, likes };
+              }
+              return c;
+            }),
+          };
+        }
+        return m;
+      }),
+    );
+
+    try {
+      const updatedMoment = await momentsService.toggleCommentLike(momentId, commentId);
+      setMoments((prev) => prev.map((m) => (m.id === momentId ? updatedMoment : m)));
+    } catch (error) {
+      console.error('Failed to toggle comment like', error);
+      // Revert on failure
+      setMoments((prev) =>
+        prev.map((m) => {
+          if (m.id === momentId) {
+            return {
+              ...m,
+              comments: m.comments.map((c) => {
+                if (c.id === commentId) {
+                  const isLiked = !c.isLiked;
+                  const likes = isLiked ? (c.likes || 0) + 1 : Math.max(0, (c.likes || 0) - 1);
+                  return { ...c, isLiked, likes };
+                }
+                return c;
+              }),
+            };
+          }
+          return m;
+        }),
+      );
+    }
   };
 
   const postComment = async () => {
     if (!commentText.trim() || !commentMomentId || isCommenting) return;
     setIsCommenting(true);
     try {
-      const updatedMoment = await momentsService.addComment(commentMomentId, commentText.trim());
+      const parentId = replyingTo?.commentId || null;
+      const replyToUser = replyingTo
+        ? {
+            id: replyingTo.authorId,
+            username: replyingTo.username,
+            name: replyingTo.author,
+          }
+        : null;
+
+      const updatedMoment = await momentsService.addComment(
+        commentMomentId,
+        commentText.trim(),
+        parentId,
+        replyToUser,
+      );
       setMoments((prev) => prev.map((m) => (m.id === commentMomentId ? updatedMoment : m)));
       setCommentText('');
+      setReplyingTo(null);
+      commentMentions.resetMentions();
     } catch (error) {
       console.error('Failed to post comment', error);
     } finally {
@@ -247,6 +336,40 @@ export default function MyMomentsScreen() {
 
   // ─── Comment Sheet (current moment) ─────────────────
   const commentMoment = moments.find((m) => m.id === commentMomentId);
+
+  // Group root comments and direct replies into threaded sequence
+  const organizedComments = useMemo(() => {
+    if (!commentMoment?.comments) return [];
+    const rootComments: Comment[] = [];
+    const repliesByParent = new Map<string, Comment[]>();
+
+    commentMoment.comments.forEach((c) => {
+      if (c.parentId) {
+        const list = repliesByParent.get(c.parentId) || [];
+        list.push(c);
+        repliesByParent.set(c.parentId, list);
+      } else {
+        rootComments.push(c);
+      }
+    });
+
+    const result: Comment[] = [];
+    rootComments.forEach((root) => {
+      result.push(root);
+      const replies = repliesByParent.get(root.id);
+      if (replies) {
+        result.push(...replies);
+      }
+    });
+
+    commentMoment.comments.forEach((c) => {
+      if (c.parentId && !result.some((r) => r.id === c.id)) {
+        result.push(c);
+      }
+    });
+
+    return result;
+  }, [commentMoment?.comments]);
 
   return (
     <View style={styles.mainContainer}>
@@ -366,7 +489,7 @@ export default function MyMomentsScreen() {
 
                 {/* Existing comments */}
                 <FlatList
-                  data={commentMoment?.comments}
+                  data={organizedComments}
                   keyExtractor={(c) => c.id}
                   style={styles.commentList}
                   showsVerticalScrollIndicator={false}
@@ -378,7 +501,7 @@ export default function MyMomentsScreen() {
                     </View>
                   }
                   renderItem={({ item: c }) => (
-                    <View style={styles.commentItem}>
+                    <View style={[styles.commentItem, !!c.parentId && styles.replyCommentItem]}>
                       <Pressable
                         onPress={() => {
                           if (c.authorId) {
@@ -387,7 +510,11 @@ export default function MyMomentsScreen() {
                           }
                         }}
                       >
-                        <Avatar avatarId={c.avatarId} alias={c.author} size={28} />
+                        <Avatar
+                          avatarId={c.avatarId}
+                          alias={c.author}
+                          size={c.parentId ? 24 : 28}
+                        />
                       </Pressable>
                       <View style={styles.commentBody}>
                         <View style={styles.commentNameRow}>
@@ -401,14 +528,100 @@ export default function MyMomentsScreen() {
                           >
                             <Text style={styles.commentAuthor}>{c.author}</Text>
                           </Pressable>
+                          {c.username ? (
+                            <Text style={styles.commentUsername}>@{c.username}</Text>
+                          ) : null}
                           <Text style={styles.commentTime}>
+                            ·{' '}
                             {c.timestamp ? new Date(c.timestamp).toLocaleDateString() : 'Just now'}
                           </Text>
                         </View>
-                        <Text style={styles.commentText}>{c.text}</Text>
+
+                        {c.replyToUser ? (
+                          <View style={styles.replyIndicator}>
+                            <Ionicons
+                              name="return-down-forward"
+                              size={11}
+                              color="rgba(255,255,255,0.4)"
+                            />
+                            <Text style={styles.replyIndicatorText}>
+                              replying to{' '}
+                              <Text style={styles.replyIndicatorUser}>
+                                @{c.replyToUser.username || c.replyToUser.name}
+                              </Text>
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        <MentionText content={c.text} style={styles.commentText} />
+
+                        {/* Comment Actions: Like & Reply */}
+                        <View style={styles.commentActionsRow}>
+                          <Pressable
+                            style={styles.commentActionBtn}
+                            onPress={() =>
+                              commentMomentId && toggleCommentLike(commentMomentId, c.id)
+                            }
+                            hitSlop={8}
+                          >
+                            <Ionicons
+                              name={c.isLiked ? 'heart' : 'heart-outline'}
+                              size={13}
+                              color={c.isLiked ? colors.primary : 'rgba(255,255,255,0.4)'}
+                            />
+                            {(c.likes || 0) > 0 && (
+                              <Text
+                                style={[
+                                  styles.commentActionText,
+                                  c.isLiked && { color: colors.primary },
+                                ]}
+                              >
+                                {c.likes}
+                              </Text>
+                            )}
+                          </Pressable>
+
+                          <Pressable
+                            style={styles.commentActionBtn}
+                            onPress={() => handleReplyTo(c)}
+                            hitSlop={8}
+                          >
+                            <Ionicons
+                              name="arrow-undo-outline"
+                              size={13}
+                              color="rgba(255,255,255,0.4)"
+                            />
+                            <Text style={styles.commentActionText}>Reply</Text>
+                          </Pressable>
+                        </View>
                       </View>
                     </View>
                   )}
+                />
+
+                {/* Replying banner */}
+                {replyingTo && (
+                  <View style={styles.replyingBar}>
+                    <View style={styles.replyingInfo}>
+                      <Ionicons name="return-down-forward" size={13} color={colors.primary} />
+                      <Text style={styles.replyingText}>
+                        Replying to{' '}
+                        <Text style={styles.replyingTarget}>
+                          @{replyingTo.username || replyingTo.author}
+                        </Text>
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => setReplyingTo(null)} hitSlop={10}>
+                      <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.4)" />
+                    </Pressable>
+                  </View>
+                )}
+
+                {/* Mention suggestions while typing comment */}
+                <MentionSuggestions
+                  suggestions={commentMentions.suggestions}
+                  isLoading={commentMentions.isLoading}
+                  onSelect={(u) => commentMentions.selectUser(u, commentText, setCommentText)}
                 />
 
                 {/* Input */}
@@ -417,10 +630,17 @@ export default function MyMomentsScreen() {
                   <TextInput
                     ref={commentInputRef}
                     style={styles.commentInput}
-                    placeholder="Add a comment..."
+                    placeholder={
+                      replyingTo
+                        ? `Reply to @${replyingTo.username || replyingTo.author}...`
+                        : 'Add a comment (use @ to tag)...'
+                    }
                     placeholderTextColor="rgba(255,255,255,0.3)"
                     value={commentText}
-                    onChangeText={setCommentText}
+                    onChangeText={(text) => {
+                      setCommentText(text);
+                      commentMentions.handleTextChange(text);
+                    }}
                     maxLength={200}
                     returnKeyType="send"
                     onSubmitEditing={postComment}
@@ -569,11 +789,75 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
+  replyCommentItem: {
+    marginLeft: 26,
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(255,255,255,0.1)',
+    paddingLeft: 10,
+  },
   commentBody: { flex: 1 },
-  commentNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  commentAuthor: { fontSize: 14, fontWeight: '700', color: 'white' },
+  commentNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  commentAuthor: { fontSize: 13, fontWeight: '700', color: 'white' },
+  commentUsername: { fontSize: 12, color: 'rgba(255,255,255,0.4)' },
   commentTime: { fontSize: 12, color: 'rgba(255,255,255,0.25)' },
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  replyIndicatorText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  replyIndicatorUser: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
   commentText: { fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20, marginTop: 3 },
+  commentActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 6,
+  },
+  commentActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentActionText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '500',
+  },
+
+  replyingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    marginBottom: spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  replyingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  replyingText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  replyingTarget: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
 
   commentInputRow: {
     flexDirection: 'row',

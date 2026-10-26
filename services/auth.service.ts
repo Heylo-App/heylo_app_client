@@ -11,6 +11,7 @@ export interface RegisterPayload {
   email: string;
   password?: string;
   confirmPassword?: string;
+  avatarId?: string;
 }
 
 export const authService = {

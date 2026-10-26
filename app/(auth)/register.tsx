@@ -17,6 +17,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Input } from '@/components/ui/Input';
 import { Text, Heading } from '@/components/ui/Text';
+import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { Avatar, AVATAR_OPTIONS, PROFESSIONAL_AVATARS } from '@/components/ui/Avatar';
+import { useOnboardingStore } from '@/store/onboarding.store';
 import { Routes } from '@/constants/routes';
 import { registerSchema, type RegisterFormData } from '@/features/auth/validation';
 import { useAuthStore } from '@/store/auth.store';
@@ -27,6 +31,8 @@ import { colors } from '@/theme/colors';
 export default function RegisterScreen() {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
+  const setOnboardingAvatarId = useOnboardingStore((s) => s.setAvatarId);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('avatar-1');
 
   const {
     control,
@@ -47,8 +53,10 @@ export default function RegisterScreen() {
       const response = await authService.register({
         email: data.email,
         password: data.password,
+        avatarId: selectedAvatarId,
       });
       setUser(response.user, response.accessToken);
+      setOnboardingAvatarId(selectedAvatarId);
       router.replace(Routes.onboarding.profileDetails);
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -95,6 +103,59 @@ export default function RegisterScreen() {
               <Text style={styles.subtitle}>
                 Start your anonymous journey. Your identity stays yours.
               </Text>
+            </Animated.View>
+
+            {/* Professional Meeting Avatar Selection */}
+            <Animated.View
+              entering={FadeInDown.duration(500).delay(100)}
+              style={styles.avatarSection}
+            >
+              <View style={styles.avatarHeader}>
+                <Text style={styles.avatarSectionLabel}>CHOOSE YOUR MEETING AVATAR</Text>
+                <Text style={styles.avatarSelectedBadge}>
+                  {PROFESSIONAL_AVATARS[selectedAvatarId]?.name} •{' '}
+                  {PROFESSIONAL_AVATARS[selectedAvatarId]?.role}
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.avatarScrollRow}
+              >
+                {AVATAR_OPTIONS.map((item) => {
+                  const isSelected = selectedAvatarId === item;
+                  const info = PROFESSIONAL_AVATARS[item];
+                  return (
+                    <Pressable
+                      key={item}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedAvatarId(item);
+                      }}
+                      style={[styles.avatarCard, isSelected && styles.avatarCardSelected]}
+                    >
+                      <View style={styles.avatarWrapper}>
+                        <Avatar avatarId={item} size={54} />
+                        {isSelected && (
+                          <View style={styles.avatarCheckmark}>
+                            <Ionicons name="checkmark" size={12} color="white" />
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        style={[styles.avatarCardName, isSelected && styles.avatarCardNameSelected]}
+                        numberOfLines={1}
+                      >
+                        {info?.name}
+                      </Text>
+                      <Text style={styles.avatarCardRole} numberOfLines={1}>
+                        {info?.role}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </Animated.View>
 
             {/* Form */}
@@ -257,7 +318,80 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: 'rgba(255,255,255,0.5)',
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing['xl'],
+  },
+  avatarSection: {
+    marginBottom: spacing.xl,
+  },
+  avatarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingHorizontal: 2,
+  },
+  avatarSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 1.2,
+  },
+  avatarSelectedBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  avatarScrollRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  avatarCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    width: 76,
+  },
+  avatarCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255,45,85,0.08)',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 6,
+  },
+  avatarCheckmark: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: colors.primary,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  avatarCardName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+  },
+  avatarCardNameSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  avatarCardRole: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.35)',
+    textAlign: 'center',
+    marginTop: 1,
   },
   form: {
     gap: spacing.xl,

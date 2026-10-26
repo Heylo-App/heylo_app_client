@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
-import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
+import { AVATAR_OPTIONS, Avatar, PROFESSIONAL_AVATARS } from '@/components/ui/Avatar';
 import { MoodChip } from '@/components/ui/MoodChip';
 import { MOOD_OPTIONS } from '@/constants/moods';
 import { Text, Heading } from '@/components/ui/Text';
@@ -343,7 +343,13 @@ export default function AboutScreen() {
                     ))}
                   </View>
 
-                  <Text style={styles.inputLabel}>Choose Avatar</Text>
+                  <View style={styles.avatarHeaderRow}>
+                    <Text style={styles.inputLabel}>Choose Avatar</Text>
+                    <Text style={styles.selectedBadge}>
+                      {PROFESSIONAL_AVATARS[editAvatarId]?.name || 'Professional'} •{' '}
+                      {PROFESSIONAL_AVATARS[editAvatarId]?.role || 'Member'}
+                    </Text>
+                  </View>
                   <View style={styles.avatarGrid}>
                     {AVATAR_OPTIONS.map((item) => (
                       <Pressable
@@ -351,10 +357,10 @@ export default function AboutScreen() {
                         onPress={() => setEditAvatarId(item)}
                         style={[styles.avatarItem, editAvatarId === item && styles.avatarSelected]}
                       >
-                        <Avatar avatarId={item} alias={editAlias || 'You'} size={72} />
+                        <Avatar avatarId={item} alias={editAlias || 'You'} size={54} />
                         {editAvatarId === item && (
                           <View style={styles.avatarCheck}>
-                            <Ionicons name="checkmark" size={14} color="white" />
+                            <Ionicons name="checkmark" size={12} color="white" />
                           </View>
                         )}
                       </Pressable>
@@ -585,6 +591,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  avatarHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  selectedBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   avatarGrid: {
     flexDirection: 'row',

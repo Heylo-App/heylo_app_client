@@ -30,11 +30,28 @@ export const momentsService = {
     return data.data;
   },
 
-  async addComment(id: string, text: string): Promise<Moment> {
+  async addComment(
+    id: string,
+    text: string,
+    parentId?: string | null,
+    replyToUser?: { id?: string; username?: string; name?: string } | null,
+  ): Promise<Moment> {
     if (env.useMockApi) {
       return delay({} as Moment); // mocked fallback
     }
-    const { data } = await apiClient.post(endpoints.moments.comment(id), { text });
+    const { data } = await apiClient.post(endpoints.moments.comment(id), {
+      text,
+      parentId,
+      replyToUser,
+    });
+    return data.data;
+  },
+
+  async toggleCommentLike(momentId: string, commentId: string): Promise<Moment> {
+    if (env.useMockApi) {
+      return delay({} as Moment); // mocked fallback
+    }
+    const { data } = await apiClient.post(endpoints.moments.likeComment(momentId, commentId));
     return data.data;
   },
 };

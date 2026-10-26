@@ -20,7 +20,11 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
 import { socketService } from '@/services/socket.service';
+import { audioPlayerService } from '@/services/audioPlayer.service';
 import { useAuthStore } from '@/store/auth.store';
+import { VoiceRecorder } from '@/components/chat/VoiceRecorder';
+import { VoiceMessageBubble } from '@/components/chat/VoiceMessageBubble';
+import { EmojiPicker } from '@/components/chat/EmojiPicker';
 import type { Group, GroupMessage } from '@/types/groups';
 
 export default function GroupChatScreen() {
@@ -33,6 +37,8 @@ export default function GroupChatScreen() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
@@ -84,6 +90,7 @@ export default function GroupChatScreen() {
     });
 
     return () => {
+      audioPlayerService.stop();
       unsubscribe();
       socketService.leaveGroupRoom(id);
     };
@@ -102,6 +109,23 @@ export default function GroupChatScreen() {
     });
 
     setInputText('');
+  };
+
+  const sendVoiceMessage = (audio: { dataUri: string; duration: number }) => {
+    if (!user) return;
+    setIsRecording(false);
+
+    socketService.sendGroupMessage({
+      groupId: id,
+      senderId: user.id,
+      text: '🎤 Voice message',
+      messageType: 'audio',
+      audioData: audio.dataUri,
+      audioDuration: audio.duration,
+      senderAlias: user.alias,
+      senderUsername: user.username,
+      senderAvatarId: user.avatarId,
+    });
   };
 
   const renderMessage = ({ item }: { item: GroupMessage }) => {
@@ -125,7 +149,16 @@ export default function GroupChatScreen() {
             </Pressable>
           )}
           <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleThem]}>
-            <Text style={styles.msgText}>{item.text}</Text>
+            {item.messageType === 'audio' && item.audioData ? (
+              <VoiceMessageBubble
+                messageId={item._id}
+                audioData={item.audioData}
+                duration={item.audioDuration}
+                isMe={isMe}
+              />
+            ) : (
+              <Text style={styles.msgText}>{item.text}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -169,37 +202,96 @@ export default function GroupChatScreen() {
               keyExtractor={(item) => item._id}
               renderItem={renderMessage}
               contentContainerStyle={styles.messageList}
+              onScrollBeginDrag={() => {
+                Keyboard.dismiss();
+                setShowEmojiPicker(false);
+              }}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             />
           )}
 
           <View
             style={[
-              styles.inputContainer,
+              styles.footerContainer,
               {
-                paddingBottom: isKeyboardVisible ? spacing.md : Math.max(insets.bottom, spacing.md),
+                paddingBottom:
+                  isKeyboardVisible || showEmojiPicker
+                    ? spacing.sm
+                    : Math.max(insets.bottom, spacing.md),
               },
             ]}
           >
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Message group..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              multiline
-            />
-            <Pressable
-              style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
-              onPress={handleSend}
-              disabled={!inputText.trim()}
-            >
-              <LinearGradient
-                colors={colors.primaryGradient}
-                style={StyleSheet.absoluteFillObject}
+            {isRecording ? (
+              <View style={styles.recordingWrapper}>
+                <VoiceRecorder onSend={sendVoiceMessage} onCancel={() => setIsRecording(false)} />
+              </View>
+            ) : (
+              <View style={styles.inputContainer}>
+                <View style={styles.inputRow}>
+                  <Pressable
+                    onPress={() => {
+                      if (showEmojiPicker) {
+                        setShowEmojiPicker(false);
+                      } else {
+                        Keyboard.dismiss();
+                        setShowEmojiPicker(true);
+                      }
+                    }}
+                    style={styles.emojiToggleBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={showEmojiPicker ? 'keypad-outline' : 'happy-outline'}
+                      size={24}
+                      color={showEmojiPicker ? colors.primary : 'rgba(255,255,255,0.6)'}
+                    />
+                  </Pressable>
+
+                  <TextInput
+                    style={styles.input}
+                    value={inputText}
+                    onChangeText={setInputText}
+                    onFocus={() => setShowEmojiPicker(false)}
+                    placeholder="Message group..."
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    multiline
+                    maxLength={500}
+                  />
+                </View>
+
+                {inputText.trim() ? (
+                  <Pressable style={styles.sendBtn} onPress={handleSend}>
+                    <LinearGradient
+                      colors={colors.primaryGradient}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Ionicons name="send" size={18} color="white" style={styles.sendIcon} />
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={styles.micBtn}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowEmojiPicker(false);
+                      setIsRecording(true);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="mic" size={22} color="white" />
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelectEmoji={(emoji) => setInputText((prev) => prev + emoji)}
+                onBackspace={() =>
+                  setInputText((prev) => (prev.length > 0 ? prev.slice(0, -1) : ''))
+                }
+                onClose={() => setShowEmojiPicker(false)}
               />
-              <Ionicons name="send" size={20} color="white" style={styles.sendIcon} />
-            </Pressable>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -244,25 +336,44 @@ const styles = StyleSheet.create({
   msgBubbleThem: { backgroundColor: 'rgba(255,255,255,0.1)', borderBottomLeftRadius: 4 },
   msgText: { fontSize: 16, color: colors.white, lineHeight: 22 },
 
+  footerContainer: {
+    backgroundColor: '#18181B',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  recordingWrapper: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  inputRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 24,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? 6 : 2,
+    maxHeight: 100,
+  },
+  emojiToggleBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
     color: colors.white,
-    fontSize: 16,
-    maxHeight: 100,
-    minHeight: 40,
+    fontSize: 15,
+    paddingHorizontal: spacing.xs,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   sendBtn: {
     width: 44,
@@ -270,8 +381,20 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: spacing.sm,
     overflow: 'hidden',
+  },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sendIcon: {
     paddingLeft: 2,

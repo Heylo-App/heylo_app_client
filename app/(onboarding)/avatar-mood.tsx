@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
+import { AVATAR_OPTIONS, Avatar, PROFESSIONAL_AVATARS } from '@/components/ui/Avatar';
 import { MoodChip } from '@/components/ui/MoodChip';
 import { Text, Heading } from '@/components/ui/Text';
 import { MOOD_OPTIONS } from '@/constants/moods';
@@ -56,17 +56,23 @@ export default function AvatarMoodScreen() {
               Your Vibe
             </Heading>
             <Text style={styles.subtitle}>
-              Choose an avatar and set your current mood to start matching.
+              Choose a professional meeting avatar and set your current mood.
             </Text>
           </Animated.View>
 
           {/* Avatar Section */}
           <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.section}>
-            <Text style={styles.sectionLabel}>CHOOSE AVATAR</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>CHOOSE AVATAR</Text>
+              <Text style={styles.selectedBadge}>
+                {PROFESSIONAL_AVATARS[avatarId]?.name || 'Professional'} •{' '}
+                {PROFESSIONAL_AVATARS[avatarId]?.role || 'Member'}
+              </Text>
+            </View>
             <View style={styles.sectionContent}>
               <FlatList
                 data={AVATAR_OPTIONS}
-                numColumns={3}
+                numColumns={5}
                 scrollEnabled={false}
                 keyExtractor={(item) => item}
                 contentContainerStyle={styles.grid}
@@ -76,10 +82,10 @@ export default function AvatarMoodScreen() {
                     onPress={() => setAvatarId(item)}
                     style={[styles.avatarItem, avatarId === item && styles.avatarSelected]}
                   >
-                    <Avatar avatarId={item} alias={displayAlias} size={80} />
+                    <Avatar avatarId={item} alias={displayAlias} size={56} />
                     {avatarId === item && (
                       <View style={styles.avatarCheck}>
-                        <Ionicons name="checkmark" size={16} color="white" />
+                        <Ionicons name="checkmark" size={14} color="white" />
                       </View>
                     )}
                   </Pressable>
@@ -196,13 +202,23 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing['2xl'],
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.4)',
     letterSpacing: 1.5,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
+  },
+  selectedBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   sectionContent: {
     paddingTop: spacing.xs,

@@ -74,36 +74,16 @@ export default function WelcomeScreen() {
 
             {/* Floating illustration area */}
             <View style={styles.illustrationArea}>
-              {/* Floating Cards with Images */}
+              {/* Center Logo with subtle ambient glow */}
               <Animated.View
-                entering={FadeIn.duration(800).delay(200)}
-                style={[styles.card, styles.leftCard]}
+                entering={FadeInDown.duration(800).delay(200)}
+                style={styles.logoContainer}
               >
+                <View style={styles.logoGlow} />
                 <Image
-                  source={{
-                    uri: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop&q=80',
-                  }}
-                  style={styles.cardImage}
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.cardGradientOverlay}
-                />
-              </Animated.View>
-
-              <Animated.View
-                entering={FadeIn.duration(800).delay(300)}
-                style={[styles.card, styles.rightCard]}
-              >
-                <Image
-                  source={{
-                    uri: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80',
-                  }}
-                  style={styles.cardImage}
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.cardGradientOverlay}
+                  source={require('@/assets/heylo-logo.png')}
+                  style={styles.mainLogo}
+                  resizeMode="contain"
                 />
               </Animated.View>
 
@@ -111,19 +91,19 @@ export default function WelcomeScreen() {
               <FloatingBadge
                 icon="heart"
                 color={colors.primary}
-                style={{ top: '5%', right: '25%' }}
+                style={{ top: '6%', right: '18%' }}
                 delay={0}
               />
               <FloatingBadge
                 icon="chatbubble-ellipses"
                 color={colors.primary}
-                style={{ bottom: '20%', left: '5%' }}
+                style={{ bottom: '16%', left: '10%' }}
                 delay={500}
               />
               <FloatingBadge
                 icon="shield-checkmark"
                 color={EMERALD}
-                style={{ bottom: '10%', right: '10%' }}
+                style={{ bottom: '8%', right: '14%' }}
                 delay={1000}
               />
             </View>
@@ -136,21 +116,6 @@ export default function WelcomeScreen() {
               <Text style={styles.subtitle}>
                 Connect based on how you feel. Chat safely with real people, anonymously.
               </Text>
-            </Animated.View>
-
-            {/* Feature pills */}
-            <Animated.View
-              entering={FadeInDown.duration(500).delay(500)}
-              style={styles.featurePills}
-            >
-              <View style={styles.pill}>
-                <Ionicons name="eye-off" size={14} color={colors.primary} />
-                <Text style={styles.pillText}>100% Anonymous</Text>
-              </View>
-              <View style={styles.pill}>
-                <Ionicons name="flash" size={14} color={colors.primary} />
-                <Text style={styles.pillText}>Instant Matching</Text>
-              </View>
             </Animated.View>
           </View>
 
@@ -183,8 +148,7 @@ export default function WelcomeScreen() {
   );
 }
 
-const CARD_W = width * 0.4;
-const CARD_H = CARD_W * 1.25;
+const LOGO_SIZE = Math.min(width * 0.48, 190);
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#000' },
@@ -212,23 +176,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: spacing.lg,
   },
-  card: {
-    position: 'absolute',
-    width: CARD_W,
-    height: CARD_H,
-    borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
+  logoContainer: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  cardGradient: { flex: 1 },
-  cardImage: { flex: 1, width: '100%', height: '100%', resizeMode: 'cover' },
-  cardGradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
-  leftCard: { left: '8%', transform: [{ rotate: '-12deg' }], zIndex: 1 },
-  rightCard: { right: '8%', transform: [{ rotate: '10deg' }], zIndex: 2, marginTop: 30 },
+  logoGlow: {
+    position: 'absolute',
+    width: LOGO_SIZE * 0.85,
+    height: LOGO_SIZE * 0.85,
+    borderRadius: (LOGO_SIZE * 0.85) / 2,
+    backgroundColor: colors.primary,
+    opacity: 0.35,
+    transform: [{ scale: 1.15 }],
+  },
+  mainLogo: {
+    width: '100%',
+    height: '100%',
+  },
 
   badge: { position: 'absolute', zIndex: 10 },
   badgeInner: {
@@ -256,28 +227,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: 'rgba(255,255,255,0.6)',
     marginTop: spacing.md,
-  },
-
-  // ── Feature pills ─────────────────────────────────────
-  featurePills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.xl,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
   },
 
   // ── Actions ───────────────────────────────────────────

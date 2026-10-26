@@ -12,6 +12,7 @@ export const endpoints = {
     suggested: '/users/suggested',
     search: '/users/search',
     profile: (id: string) => `/users/${id}`,
+    byUsername: (username: string) => `/users/by-username/${encodeURIComponent(username)}`,
     updateProfile: '/users/me',
   },
   moments: {
@@ -19,6 +20,8 @@ export const endpoints = {
     create: '/moments',
     like: (id: string) => `/moments/${id}/like`,
     comment: (id: string) => `/moments/${id}/comments`,
+    likeComment: (momentId: string, commentId: string) =>
+      `/moments/${momentId}/comments/${commentId}/like`,
     detail: (id: string) => `/moments/${id}`,
   },
   chats: {
