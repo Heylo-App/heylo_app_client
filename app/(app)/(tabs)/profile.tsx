@@ -28,7 +28,7 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
 // ════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
@@ -63,6 +63,7 @@ const MenuRow = ({
     </View>
   </Pressable>
 );
+
 export default function AboutScreen() {
   const { user, setUser } = useAuthStore();
   const logout = useLogout();
@@ -76,6 +77,18 @@ export default function AboutScreen() {
   const [editMood, setEditMood] = useState('');
   const [editAvatarId, setEditAvatarId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync fresh profile from server on mount
+  useEffect(() => {
+    authService
+      .getMe()
+      .then((freshUser) => {
+        if (freshUser) {
+          setUser({ ...user, ...freshUser });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -100,19 +113,43 @@ export default function AboutScreen() {
   };
 
   const saveProfile = async () => {
+    const trimmedAlias = editAlias.trim();
+    const trimmedUsername = editUsername.trim().toLowerCase();
+
+    if (!trimmedAlias) {
+      Alert.alert('Required Field', 'Please enter a name / alias.');
+      return;
+    }
+
+    if (!trimmedUsername) {
+      Alert.alert('Required Field', 'Please enter a username.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+      Alert.alert(
+        'Invalid Username',
+        'Username must be 3-20 characters and contain only letters, numbers, and underscores.',
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       const updatedUser = await authService.updateProfile({
-        alias: editAlias,
-        username: editUsername,
+        alias: trimmedAlias,
+        username: trimmedUsername,
         language: editLanguage,
         mood: editMood as any,
         avatarId: editAvatarId,
       });
-      setUser(updatedUser);
+      setUser({ ...user, ...updatedUser });
       setShowEdit(false);
-    } catch {
-      Alert.alert('Error', 'Failed to update profile');
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || error?.message || 'Failed to update profile';
+      Alert.alert('Error', message);
     } finally {
       setIsSaving(false);
     }
@@ -142,13 +179,20 @@ export default function AboutScreen() {
               </Text>
             </Pressable>
 
-            <View style={styles.avatarRing}>
-              <Avatar avatarId={user.avatarId} alias={user.alias} size={84} />
-            </View>
+            <Pressable style={styles.avatarContainer} onPress={openEditModal}>
+              <View style={styles.avatarRing}>
+                <Avatar avatarId={user.avatarId} alias={user.alias} size={84} />
+              </View>
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={14} color="white" />
+              </View>
+            </Pressable>
             <Heading level={1} style={styles.aliasText}>
-              {user.alias}
+              {user.alias || 'Heylo User'}
             </Heading>
-            <Text style={styles.usernameText}>@{user.username || 'unavailable'}</Text>
+            <Text style={styles.usernameText}>
+              {user.username ? `@${user.username.toLowerCase()}` : '@no_username'}
+            </Text>
           </Animated.View>
 
           {/* ── Account Section ─────────────────────────────── */}
@@ -159,39 +203,45 @@ export default function AboutScreen() {
                 icon="person-outline"
                 iconColor={BLUE}
                 label="Name"
-                value={user.alias || 'NA'}
-                showChevron={false}
+                value={user.alias || 'Not set'}
+                onPress={openEditModal}
+                showChevron={true}
               />
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="at-circle-outline"
                 iconColor={BLUE}
                 label="Username"
-                value={`@${user.username?.toLowerCase().replace(/\s/g, '') || 'unavailable'}`}
-                showChevron={false}
+                value={user.username ? `@${user.username.toLowerCase()}` : 'Not set'}
+                onPress={openEditModal}
+                showChevron={true}
               />
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="language-outline"
                 iconColor={colors.primary}
                 label="Language"
-                value={user.language || 'Any'}
-                showChevron={false}
+                value={user.language || 'English'}
+                onPress={openEditModal}
+                showChevron={true}
               />
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="color-palette-outline"
                 iconColor={colors.primary}
                 label="Change Avatar"
-                showChevron={false}
+                value={PROFESSIONAL_AVATARS[user.avatarId || 'avatar-1']?.name || 'Select'}
+                onPress={openEditModal}
+                showChevron={true}
               />
               <View style={styles.menuDivider} />
               <MenuRow
                 icon="sparkles-outline"
                 iconColor={AMBER}
                 label="Current Mood"
-                value={user.mood || 'Not set'}
-                showChevron={false}
+                value={user.mood ? user.mood.toUpperCase() : 'Not set'}
+                onPress={openEditModal}
+                showChevron={true}
               />
               <View style={styles.menuDivider} />
               <MenuRow
@@ -320,6 +370,7 @@ export default function AboutScreen() {
                     placeholder="Your handle (e.g. mohitxcodes)"
                     placeholderTextColor="rgba(255,255,255,0.3)"
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
 
                   <Text style={styles.inputLabel}>Language</Text>
@@ -429,12 +480,30 @@ const styles = StyleSheet.create({
   profileHeader: {
     alignItems: 'center',
   },
+  avatarContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
   avatarRing: {
     padding: 3,
     borderRadius: 45,
     borderWidth: 2,
     borderColor: colors.primary,
-    marginBottom: spacing.sm,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
   },
   aliasText: {
     fontSize: 28,

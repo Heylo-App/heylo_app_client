@@ -18,7 +18,7 @@ export function getRedirectPath(redirect: AuthRedirect): string {
     case 'auth':
       return Routes.auth.welcome;
     case 'onboarding':
-      return Routes.onboarding.avatarMood;
+      return Routes.onboarding.profileDetails;
     case 'app':
       return Routes.app.home;
     default:

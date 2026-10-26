@@ -51,7 +51,7 @@ export function useVerifyOtp() {
 }
 
 export function useCompleteOnboarding() {
-  const setUser = useAuthStore((s) => s.setUser);
+  const { user: existingUser, setUser } = useAuthStore();
   const setOnboarded = useAuthStore((s) => s.setOnboarded);
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const router = useRouter();
@@ -60,7 +60,9 @@ export function useCompleteOnboarding() {
   return useMutation({
     mutationFn: (payload: OnboardingPayload) => authService.completeOnboarding(payload),
     onSuccess: async (user) => {
-      setUser(user);
+      // Merge with existing user data to preserve fields from registration (e.g. email)
+      const mergedUser = { ...existingUser, ...user };
+      setUser(mergedUser);
       await setOnboarded(true);
       await persistentStorage.set(StorageKeys.alias, user.alias);
       resetOnboarding();
