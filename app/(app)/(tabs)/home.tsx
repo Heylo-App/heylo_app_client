@@ -36,6 +36,8 @@ import { useMentionLookup } from '@/hooks/useMentionLookup';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
+import { useActivityStore } from '@/store/activity.store';
+import { ActivitySheet } from '@/components/activity/ActivitySheet';
 import { momentsService } from '@/services/moments.service';
 import { socketService } from '@/services/socket.service';
 import type { Moment, Comment } from '@/types/moment';
@@ -143,6 +145,10 @@ export default function HomeScreen() {
     username?: string;
   } | null>(null);
   const commentInputRef = useRef<TextInput>(null);
+
+  // Activity state
+  const [showActivity, setShowActivity] = useState(false);
+  const unreadCount = useActivityStore((s) => s.unreadCount);
 
   // Mention lookups
   const postMentions = useMentionLookup();
@@ -282,6 +288,21 @@ export default function HomeScreen() {
     setCommentMomentId(null);
     setReplyingTo(null);
     commentMentions.resetMentions();
+  };
+
+  const handleSelectActivityMoment = async (momentId: string, commentId?: string | null) => {
+    const existing = moments.find((m) => m.id === momentId);
+    if (!existing) {
+      try {
+        const fetched = await momentsService.getMoment(momentId);
+        if (fetched) {
+          setMoments((prev) => [fetched, ...prev]);
+        }
+      } catch (err) {
+        console.error('Failed to load moment for activity:', err);
+      }
+    }
+    openComments(momentId);
   };
 
   const handleReplyTo = (c: Comment) => {
@@ -440,16 +461,36 @@ export default function HomeScreen() {
   const listHeader = (
     <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
       <View style={styles.headerRow}>
-        <View>
+        <View style={{ flex: 1, marginRight: spacing.sm }}>
           <Heading level={1} style={styles.title}>
             Home
           </Heading>
           <Text style={styles.subtitle}>See what others are thinking</Text>
         </View>
-        <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
-          <Ionicons name="person" size={14} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.myMomentsBtnText}>My Moments</Text>
-        </Pressable>
+
+        <View style={styles.headerActions}>
+          <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
+            <Ionicons name="person" size={13} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.myMomentsBtnText}>My Moments</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.activityBtn, unreadCount > 0 && styles.activityBtnActive]}
+            onPress={() => setShowActivity(true)}
+            hitSlop={6}
+          >
+            <Ionicons
+              name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+              size={19}
+              color={unreadCount > 0 ? '#FFF' : 'rgba(255,255,255,0.8)'}
+            />
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   );
@@ -818,6 +859,13 @@ export default function HomeScreen() {
             </View>
           </Animated.View>
         </Modal>
+
+        {/* Activity Sheet */}
+        <ActivitySheet
+          visible={showActivity}
+          onClose={() => setShowActivity(false)}
+          onSelectMoment={handleSelectActivityMoment}
+        />
       </SafeAreaView>
     </View>
   );
@@ -840,23 +888,64 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   title: { fontSize: 32, fontWeight: '800', color: colors.white },
   subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 },
 
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   myMomentsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
-  myMomentsBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+  myMomentsBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+
+  activityBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  activityBtnActive: {
+    backgroundColor: 'rgba(255,45,85,0.15)',
+    borderColor: 'rgba(255,45,85,0.4)',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  unreadBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
 
   // Moment card
   momentCard: {

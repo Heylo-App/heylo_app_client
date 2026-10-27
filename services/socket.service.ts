@@ -38,6 +38,8 @@ type SocketEvents = {
   chat_closed: (payload: { chatId: string; closedBy?: string; message: string }) => void;
   'moment:created': (payload: any) => void;
   'moment:updated': (payload: { id: string; likes: number; comments: any[] }) => void;
+  'activity:new': (payload: { activity: any; unreadCount: number }) => void;
+  'activity:count': (payload: { unreadCount: number }) => void;
 };
 
 class SocketService {
@@ -341,6 +343,11 @@ class SocketService {
   onReceiveChatMessage(handler: (msg: any) => void) {
     this.on('receive_chat_message', handler);
     return () => this.off('receive_chat_message', handler);
+  }
+
+  onActivityNew(handler: (payload: { activity: any; unreadCount: number }) => void) {
+    this.on('activity:new', handler);
+    return () => this.off('activity:new', handler);
   }
 
   get isConnected() {

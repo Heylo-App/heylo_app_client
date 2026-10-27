@@ -4,6 +4,7 @@ import { Redirect, Stack, useRouter } from 'expo-router';
 import { Routes } from '@/constants/routes';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
+import { useActivityStore } from '@/store/activity.store';
 import { colors } from '@/theme/colors';
 import { socketService } from '@/services/socket.service';
 import { IncomingRequestModal } from '@/components/connection/IncomingRequestModal';
@@ -13,6 +14,8 @@ export default function AppLayout() {
   const { isAuthenticated, isOnboarded, token, user } = useAuthStore();
   const addRequest = useConnectionStore((s) => s.addRequest);
   const removeRequest = useConnectionStore((s) => s.removeRequest);
+  const fetchActivities = useActivityStore((s) => s.fetchActivities);
+  const addRealtimeActivity = useActivityStore((s) => s.addRealtimeActivity);
 
   const userId = user?.id || (user as any)?._id;
 
@@ -21,10 +24,11 @@ export default function AppLayout() {
     if (isAuthenticated && userId) {
       socketService.connect(token || undefined, userId);
       socketService.registerUser(userId);
+      fetchActivities();
     }
-  }, [isAuthenticated, token, userId]);
+  }, [isAuthenticated, token, userId, fetchActivities]);
 
-  // Global listeners for connect requests & accept navigation
+  // Global listeners for connect requests, accept navigation, and realtime activities
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -48,19 +52,25 @@ export default function AppLayout() {
       router.push(`/(app)/chat/${chatId}`);
     });
 
+    const unsubActivity = socketService.onActivityNew(({ activity, unreadCount }) => {
+      console.log('[AppLayout] Realtime activity received:', activity.type, unreadCount);
+      addRealtimeActivity(activity, unreadCount);
+    });
+
     return () => {
       unsubReq();
       unsubCancel();
       unsubAccept();
+      unsubActivity();
     };
-  }, [isAuthenticated, addRequest, removeRequest, router]);
+  }, [isAuthenticated, addRequest, removeRequest, router, addRealtimeActivity]);
 
   if (!isAuthenticated) {
     return <Redirect href={Routes.auth.welcome} />;
   }
 
   if (!isOnboarded) {
-    return <Redirect href={Routes.onboarding.avatarMood} />;
+    return <Redirect href={Routes.onboarding.profileDetails} />;
   }
 
   return (

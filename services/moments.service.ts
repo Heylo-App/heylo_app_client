@@ -14,6 +14,14 @@ export const momentsService = {
     return data.data; // Server returns { success: true, data: [...] }
   },
 
+  async getMoment(id: string): Promise<Moment> {
+    if (env.useMockApi) {
+      return delay({} as Moment);
+    }
+    const { data } = await apiClient.get(endpoints.moments.detail(id));
+    return data.data;
+  },
+
   async createMoment(payload: CreateMomentPayload): Promise<Moment> {
     if (env.useMockApi) {
       return delay({} as Moment); // mocked fallback

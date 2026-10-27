@@ -49,4 +49,9 @@ export const endpoints = {
     actions: '/moderation/actions',
   },
   onboarding: '/onboarding/complete',
+  activity: {
+    list: '/activity',
+    markRead: '/activity/read',
+    unreadCount: '/activity/unread-count',
+  },
 } as const;
