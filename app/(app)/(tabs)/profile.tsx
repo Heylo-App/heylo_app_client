@@ -26,6 +26,7 @@ import { useLogout } from '@/hooks/useAuth';
 import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 // ════════════════════════════════════════════════════════════════
 import { useState, useEffect } from 'react';
@@ -147,9 +148,7 @@ export default function AboutScreen() {
       setShowEdit(false);
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error: any) {
-      const message =
-        error?.response?.data?.message || error?.message || 'Failed to update profile';
-      Alert.alert('Error', message);
+      Alert.alert('Oops!', getUserFriendlyError(error));
     } finally {
       setIsSaving(false);
     }

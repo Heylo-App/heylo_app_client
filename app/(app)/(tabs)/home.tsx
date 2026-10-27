@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, MutableRefObject } from 'react';
 import {
   StyleSheet,
   View,
@@ -12,6 +12,7 @@ import {
   Modal,
   Keyboard,
   LayoutAnimation,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -42,6 +43,7 @@ import { momentsService } from '@/services/moments.service';
 import { socketService } from '@/services/socket.service';
 import type { Moment, Comment } from '@/types/moment';
 import { HomeSkeleton } from '@/components/skeletons';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 const SHEET_BG = '#111115';
 const SHEET_SURFACE = 'rgba(255,255,255,0.06)';
@@ -184,6 +186,8 @@ export default function HomeScreen() {
   const [showCreate, setShowCreate] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const isPostingRef = useRef(false); // Ref-based guard against double-tap
+  const locallyCreatedIds = useRef<Set<string>>(new Set()); // Track IDs we created locally
 
   const myName = user?.alias || user?.username || 'Me';
   const myAvatar = user?.avatarId || 'avatar-1';
@@ -212,7 +216,14 @@ export default function HomeScreen() {
   // Real-time socket sync for moments and comments
   useEffect(() => {
     const handleMomentCreated = (newMoment: Moment) => {
+      // Skip if this moment was created locally by the current user
+      // (already added to state via handleCreateMoment)
+      if (locallyCreatedIds.current.has(newMoment.id)) {
+        return;
+      }
+
       setMoments((prev) => {
+        // Extra safety: dedup check in case of race conditions
         if (prev.some((m) => m.id === newMoment.id)) return prev;
         return [newMoment, ...prev];
       });
@@ -404,18 +415,31 @@ export default function HomeScreen() {
   };
 
   const handleCreateMoment = async () => {
-    if (!newContent.trim() || isPosting) return;
+    // Guard: prevent double-tap using both state and ref
+    if (!newContent.trim() || isPosting || isPostingRef.current) return;
     setIsPosting(true);
+    isPostingRef.current = true;
     try {
       const newMoment = await momentsService.createMoment({ content: newContent.trim() });
-      setMoments((prev) => [newMoment, ...prev]);
+      // Track this ID so the socket listener doesn't duplicate it
+      locallyCreatedIds.current.add(newMoment.id);
+      // Clean up tracked ID after 10s (socket event should have arrived by then)
+      setTimeout(() => locallyCreatedIds.current.delete(newMoment.id), 10000);
+
+      setMoments((prev) => {
+        // Final dedup check
+        if (prev.some((m) => m.id === newMoment.id)) return prev;
+        return [newMoment, ...prev];
+      });
       setNewContent('');
       postMentions.resetMentions();
       setShowCreate(false);
     } catch (error) {
       console.error('Failed to create moment', error);
+      Alert.alert('Unable to post moment', getUserFriendlyError(error));
     } finally {
       setIsPosting(false);
+      isPostingRef.current = false;
     }
   };
 
@@ -457,52 +481,65 @@ export default function HomeScreen() {
     return result;
   }, [commentMoment?.comments]);
 
-  // ─── Header ─────────────────────────────────────────
-  const listHeader = (
-    <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1, marginRight: spacing.sm }}>
-          <Heading level={1} style={styles.title}>
-            Home
-          </Heading>
-          <Text style={styles.subtitle}>See what others are thinking</Text>
-        </View>
-
-        <View style={styles.headerActions}>
-          <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
-            <Ionicons name="person" size={13} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.myMomentsBtnText}>My Moments</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.activityBtn, unreadCount > 0 && styles.activityBtnActive]}
-            onPress={() => setShowActivity(true)}
-            hitSlop={6}
-          >
-            <Ionicons
-              name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-              size={19}
-              color={unreadCount > 0 ? '#FFF' : 'rgba(255,255,255,0.8)'}
-            />
-            {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-      </View>
-    </Animated.View>
-  );
+  // Deduplicate moments to prevent "two children with the same key" warning
+  const dedupedMoments = useMemo(() => {
+    const seen = new Set<string>();
+    return moments.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+  }, [moments]);
 
   // ─── Render ─────────────────────────────────────────
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
       <SafeAreaView style={styles.safeArea}>
+        {/* Fixed App Bar */}
+        <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
+              <Heading level={1} style={styles.title}>
+                Home
+              </Heading>
+            </View>
+
+            <View style={styles.headerActions}>
+              <Pressable
+                style={styles.myMomentsBtn}
+                onPress={() => router.push('/(app)/my-moments')}
+              >
+                <Ionicons name="person" size={13} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.myMomentsBtnText}>My Moments</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.activityBtn, unreadCount > 0 && styles.activityBtnActive]}
+                onPress={() => setShowActivity(true)}
+                hitSlop={6}
+              >
+                <Ionicons
+                  name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+                  size={19}
+                  color={unreadCount > 0 ? '#FFF' : 'rgba(255,255,255,0.8)'}
+                />
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+
         <FlatList
-          data={moments}
+          data={dedupedMoments}
           keyExtractor={(item) => item.id}
+          style={styles.list}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -520,7 +557,6 @@ export default function HomeScreen() {
               />
             </Animated.View>
           )}
-          ListHeaderComponent={listHeader}
           ListEmptyComponent={
             isLoading ? (
               <HomeSkeleton />
@@ -877,13 +913,17 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#000' },
   safeArea: { flex: 1 },
-  container: { paddingBottom: spacing['4xl'] * 2 },
+  list: { flex: 1 },
+  container: {
+    paddingTop: spacing.xs,
+    paddingBottom: spacing['4xl'] * 2,
+  },
 
   // Header
   header: {
     paddingHorizontal: spacing['2xl'],
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
   headerRow: {
     flexDirection: 'row',

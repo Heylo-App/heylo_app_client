@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,6 +23,7 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
 import type { Group } from '@/types/groups';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 export default function GroupsScreen() {
   const router = useRouter();
@@ -63,6 +65,7 @@ export default function GroupsScreen() {
       setNewGroupDesc('');
     } catch (error) {
       console.error('Failed to create group', error);
+      Alert.alert('Unable to create group', getUserFriendlyError(error));
     } finally {
       setIsCreating(false);
     }

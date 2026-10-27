@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { RequestsSkeleton } from '@/components/skeletons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
 import type { GroupInvite } from '@/types/groups';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 export default function GroupRequestsScreen() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function GroupRequestsScreen() {
       router.replace('/(app)/(tabs)/groups'); // Go back to groups list which will now show it
     } catch (error) {
       console.error('Failed to accept', error);
+      Alert.alert('Unable to accept invite', getUserFriendlyError(error));
     } finally {
       setProcessing(null);
     }
@@ -54,6 +56,7 @@ export default function GroupRequestsScreen() {
       setInvites((prev) => prev.filter((inv) => inv._id !== inviteId));
     } catch (error) {
       console.error('Failed to decline', error);
+      Alert.alert('Unable to decline invite', getUserFriendlyError(error));
     } finally {
       setProcessing(null);
     }

@@ -11,6 +11,7 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
 import type { Group } from '@/types/groups';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 export default function GroupInviteScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -27,7 +28,7 @@ export default function GroupInviteScreen() {
         const data = await groupsService.getInvitePreview(code);
         setGroup(data);
       } catch (err: any) {
-        setError(err?.response?.data?.message || 'Invalid or expired invite link');
+        setError(getUserFriendlyError(err));
       } finally {
         setLoading(false);
       }
@@ -48,7 +49,7 @@ export default function GroupInviteScreen() {
       await groupsService.joinGroup(code);
       router.replace(`/(app)/groups/${group?._id}`);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to join group');
+      setError(getUserFriendlyError(err));
       setJoining(false);
     }
   };

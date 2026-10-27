@@ -16,6 +16,7 @@ import { usersService, UserProfile } from '@/services/users.service';
 import { chatsService } from '@/services/chats.service';
 import { socketService } from '@/services/socket.service';
 import { useAuthStore } from '@/store/auth.store';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,10 +68,7 @@ export default function UserProfileScreen() {
       }
     } catch (err: any) {
       console.error('Failed to start chat:', err);
-      Alert.alert(
-        'Error',
-        err?.response?.data?.message || 'Could not start chat. Please try again.',
-      );
+      Alert.alert('Oops!', getUserFriendlyError(err));
     } finally {
       setIsStartingChat(false);
     }

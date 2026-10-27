@@ -28,6 +28,7 @@ import { spacing } from '@/theme/spacing';
 import { groupsService } from '@/services/groups.service';
 import { usersService } from '@/services/users.service';
 import { useAuthStore } from '@/store/auth.store';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_BG = '#111115';
@@ -125,7 +126,7 @@ export default function GroupInfoScreen() {
             await groupsService.leaveGroup(id);
             router.replace('/(app)/(tabs)/groups');
           } catch (e: any) {
-            Alert.alert('Error', e?.response?.data?.message || 'Could not leave group');
+            Alert.alert('Oops!', getUserFriendlyError(e));
           }
         },
       },
@@ -138,7 +139,7 @@ export default function GroupInfoScreen() {
       await groupsService.addMember(id, username);
       Alert.alert('Success', `Invite sent to ${username}`);
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not send invite');
+      Alert.alert('Oops!', getUserFriendlyError(e));
     } finally {
       setInvitingId(null);
     }

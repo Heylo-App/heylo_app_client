@@ -23,6 +23,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -51,13 +52,10 @@ export default function RegisterScreen() {
       setUser(response.user, response.accessToken);
       router.replace(Routes.onboarding.profileDetails);
     } catch (error: any) {
-      console.error('Registration failed:', error);
+      const friendlyMessage = getUserFriendlyError(error);
       setError('root.serverError', {
         type: 'server',
-        message:
-          error.response?.data?.message ||
-          error.message ||
-          'An unexpected error occurred. Please try again.',
+        message: friendlyMessage,
       });
     }
   });

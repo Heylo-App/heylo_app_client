@@ -1,7 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { DeviceEventEmitter } from 'react-native';
 
 import { env } from '@/config/env';
 import { secureStorage } from '@/utils/storage';
+import { getUserFriendlyError } from '@/utils/errorMessages';
 
 import { endpoints } from './endpoints';
 
@@ -22,6 +24,14 @@ function processQueue(token: string | null) {
   refreshQueue = [];
 }
 
+/**
+ * Emit a global event when the user's session is definitively expired.
+ * The root layout listens for this to redirect to the welcome screen and show a friendly alert.
+ */
+function emitSessionExpired(message?: string) {
+  DeviceEventEmitter.emit('session:expired', { message });
+}
+
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await secureStorage.getToken();
   if (token && config.headers) {
@@ -35,7 +45,23 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    const status = error.response?.status;
+    const errorMsg = String((error.response?.data as any)?.message || '').toLowerCase();
+    const isUserNotFound = status === 404 && errorMsg.includes('user not found');
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/register');
+
+    // If an authenticated request gets "User not found" (e.g. account deleted from DB),
+    // immediately clear session and emit session:expired so the user isn't stuck with ghost auth
+    if (isUserNotFound && !isAuthEndpoint && originalRequest?.headers?.Authorization) {
+      await secureStorage.clearTokens();
+      const friendlyMsg = 'Your account was not found. Please log in or register again.';
+      emitSessionExpired(friendlyMsg);
+      return Promise.reject(new Error(friendlyMsg));
+    }
+
+    if (status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
@@ -59,7 +85,13 @@ apiClient.interceptors.response.use(
 
     try {
       const refreshToken = await secureStorage.getRefreshToken();
-      if (!refreshToken) throw new Error('No refresh token');
+      if (!refreshToken) {
+        // No refresh token available — session is over
+        await secureStorage.clearTokens();
+        const friendlyMsg = 'Your session has expired. Please log in again.';
+        emitSessionExpired(friendlyMsg);
+        return Promise.reject(new Error(friendlyMsg));
+      }
 
       const { data } = await axios.post(`${env.apiUrl}${endpoints.auth.refresh}`, {
         refreshToken,
@@ -73,21 +105,27 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
       }
       return apiClient(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       processQueue(null);
       await secureStorage.clearTokens();
-      return Promise.reject(refreshError);
+      const serverMsg = refreshError?.response?.data?.message;
+      const isNotFound =
+        typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('user not found');
+      const friendlyMsg = isNotFound
+        ? 'Your account was not found. Please log in or register again.'
+        : 'Your session has expired. Please log in again.';
+      emitSessionExpired(friendlyMsg);
+      return Promise.reject(new Error(friendlyMsg));
     } finally {
       isRefreshing = false;
     }
   },
 );
 
+/**
+ * Extracts a user-friendly error message from any error.
+ * Use this as a convenience re-export; the full utility lives in utils/errorMessages.
+ */
 export function getApiErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    return data?.message ?? error.message ?? 'Something went wrong';
-  }
-  if (error instanceof Error) return error.message;
-  return 'Something went wrong';
+  return getUserFriendlyError(error);
 }
