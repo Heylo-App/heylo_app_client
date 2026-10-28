@@ -5,8 +5,8 @@ const extra = Constants.expoConfig?.extra ?? {};
 // const ip = 'http://172.25.14.251:3000';
 // const ip = 'http://192.168.1.12:3000';
 // const ip = 'http://172.25.82.50:3000';
-// const ip = 'http://localhost:3000';
-const ip = 'https://heylo-app-server.onrender.com';
+const ip = 'http://localhost:3000';
+// const ip = 'https://heylo-app-server.onrender.com';
 
 export const env = {
   apiUrl: (extra.apiUrl as string) ?? process.env.EXPO_PUBLIC_API_URL ?? ip,

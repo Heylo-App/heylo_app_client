@@ -43,6 +43,7 @@ export const endpoints = {
     info: (id: string) => `/groups/${id}/info`,
     delete: (id: string) => `/groups/${id}`,
     leave: (id: string) => `/groups/${id}/leave`,
+    removeMember: (groupId: string, memberId: string) => `/groups/${groupId}/members/${memberId}`,
   },
   moderation: {
     report: '/moderation/report',

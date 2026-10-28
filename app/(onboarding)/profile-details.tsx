@@ -18,17 +18,13 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/Input';
 import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
+import { LANGUAGE_OPTIONS } from '@/constants/languages';
 import { profileDetailsSchema, type ProfileDetailsFormData } from '@/features/auth/validation';
 import { useOnboardingStore } from '@/store/onboarding.store';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
 const BLUE = '#3B82F6';
-
-const LANGUAGE_OPTIONS = [
-  { label: 'English', value: 'English' },
-  { label: 'Hindi', value: 'Hindi' },
-];
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();

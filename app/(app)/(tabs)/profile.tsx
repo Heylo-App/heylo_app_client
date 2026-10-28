@@ -19,7 +19,9 @@ import { BlurView } from 'expo-blur';
 
 import { AVATAR_OPTIONS, Avatar, PROFESSIONAL_AVATARS } from '@/components/ui/Avatar';
 import { MoodChip } from '@/components/ui/MoodChip';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { MOOD_OPTIONS } from '@/constants/moods';
+import { LANGUAGE_OPTIONS } from '@/constants/languages';
 import { Text, Heading } from '@/components/ui/Text';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/hooks/useAuth';
@@ -29,7 +31,7 @@ import { colors } from '@/theme/colors';
 import { getUserFriendlyError } from '@/utils/errorMessages';
 
 // ════════════════════════════════════════════════════════════════
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const BLUE = '#3B82F6';
 const EMERALD = '#10B981';
@@ -79,6 +81,16 @@ export default function AboutScreen() {
   const [editAvatarId, setEditAvatarId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const languageOptions = useMemo(() => {
+    if (
+      editLanguage &&
+      !LANGUAGE_OPTIONS.some((opt) => opt.value.toLowerCase() === editLanguage.toLowerCase())
+    ) {
+      return [{ label: editLanguage, value: editLanguage }, ...LANGUAGE_OPTIONS];
+    }
+    return LANGUAGE_OPTIONS;
+  }, [editLanguage]);
+
   // Sync fresh profile from server on mount
   useEffect(() => {
     authService
@@ -107,7 +119,7 @@ export default function AboutScreen() {
   const openEditModal = () => {
     setEditAlias(user.alias || '');
     setEditUsername(user.username || '');
-    setEditLanguage(user.language || '');
+    setEditLanguage(user.language || 'English');
     setEditMood(user.mood || '');
     setEditAvatarId(user.avatarId || 'avatar-1');
     setShowEdit(true);
@@ -373,12 +385,11 @@ export default function AboutScreen() {
                   />
 
                   <Text style={styles.inputLabel}>Language</Text>
-                  <TextInput
-                    style={styles.input}
+                  <Dropdown
+                    placeholder="Select language"
                     value={editLanguage}
-                    onChangeText={setEditLanguage}
-                    placeholder="e.g. English, Spanish"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    options={languageOptions}
+                    onSelect={setEditLanguage}
                   />
 
                   <Text style={styles.inputLabel}>Current Mood</Text>

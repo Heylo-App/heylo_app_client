@@ -66,6 +66,12 @@ export default function GroupInfoScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+
+  const currentUserId = user?.id || (user as any)?._id;
+  const isCurrentAdmin = Boolean(
+    info?.adminId?._id && currentUserId && String(info.adminId._id) === String(currentUserId),
+  );
 
   useEffect(() => {
     const fetchInfo = async () => {
@@ -145,6 +151,41 @@ export default function GroupInfoScreen() {
     }
   };
 
+  const handleConfirmRemoveMember = (member: MemberInfo) => {
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove @${member.username} (${member.alias}) from this group?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => handleRemoveMember(member),
+        },
+      ],
+    );
+  };
+
+  const handleRemoveMember = async (member: MemberInfo) => {
+    setRemovingMemberId(member._id);
+    try {
+      await groupsService.removeMember(id, member._id);
+      setInfo((prev) =>
+        prev
+          ? {
+              ...prev,
+              members: prev.members.filter((m) => m._id !== member._id),
+            }
+          : null,
+      );
+      Alert.alert('Success', `${member.alias || member.username} has been removed from the group.`);
+    } catch (e: any) {
+      Alert.alert('Oops!', getUserFriendlyError(e));
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.mainContainer}>
@@ -174,31 +215,56 @@ export default function GroupInfoScreen() {
   }
 
   const renderMember = ({ item, index }: { item: MemberInfo; index: number }) => {
-    const isAdmin = item._id === info.adminId._id;
+    const isMemberAdmin = item._id === info.adminId._id;
+    const canRemove = isCurrentAdmin && !isMemberAdmin;
+    const isRemoving = removingMemberId === item._id;
+
     return (
       <Animated.View entering={FadeInDown.delay(index * 60).duration(300)}>
-        <Pressable
-          style={styles.memberRow}
-          onPress={() => item._id && router.push(`/(app)/users/${item._id}`)}
-        >
-          <Avatar avatarId={item.avatarId} size={44} />
-          <View style={styles.memberInfo}>
-            <View style={styles.memberNameRow}>
-              <Text style={styles.memberAlias}>{item.alias}</Text>
-              {isAdmin && (
-                <View style={styles.adminBadge}>
-                  <Text style={styles.adminBadgeText}>Admin</Text>
-                </View>
-              )}
+        <View style={styles.memberRow}>
+          <Pressable
+            style={styles.memberMainContent}
+            onPress={() => item._id && router.push(`/(app)/users/${item._id}`)}
+          >
+            <Avatar avatarId={item.avatarId} size={44} />
+            <View style={styles.memberInfo}>
+              <View style={styles.memberNameRow}>
+                <Text style={styles.memberAlias}>{item.alias}</Text>
+                {isMemberAdmin && (
+                  <View style={styles.adminBadge}>
+                    <Text style={styles.adminBadgeText}>Admin</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.memberUsername}>@{item.username}</Text>
             </View>
-            <Text style={styles.memberUsername}>@{item.username}</Text>
+          </Pressable>
+
+          <View style={styles.memberRightActions}>
+            {item.mood && (
+              <View style={styles.moodChip}>
+                <Text style={styles.moodText}>{item.mood}</Text>
+              </View>
+            )}
+
+            {canRemove && (
+              <Pressable
+                style={styles.removeBtn}
+                onPress={() => handleConfirmRemoveMember(item)}
+                disabled={isRemoving}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${item.alias || item.username}`}
+              >
+                {isRemoving ? (
+                  <ActivityIndicator size="small" color="#ef4444" />
+                ) : (
+                  <Ionicons name="trash-outline" size={17} color="#ef4444" />
+                )}
+              </Pressable>
+            )}
           </View>
-          {item.mood && (
-            <View style={styles.moodChip}>
-              <Text style={styles.moodText}>{item.mood}</Text>
-            </View>
-          )}
-        </Pressable>
+        </View>
       </Animated.View>
     );
   };
@@ -241,7 +307,7 @@ export default function GroupInfoScreen() {
           <Text style={styles.actionLabel}>Copy Link</Text>
         </Pressable>
 
-        {info.adminId._id === user?.id ? (
+        {isCurrentAdmin ? (
           <Pressable style={styles.actionBtn} onPress={handleDelete}>
             <View style={[styles.actionIconBg, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
               <Ionicons name="trash" size={20} color="#ef4444" />
@@ -522,6 +588,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
+  memberMainContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   memberInfo: { flex: 1, marginLeft: spacing.md },
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   memberAlias: { fontSize: 16, fontWeight: '600', color: colors.white },
@@ -533,6 +604,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   adminBadgeText: { fontSize: 11, color: colors.primary, fontWeight: '700' },
+  memberRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   moodChip: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 10,
@@ -540,6 +616,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   moodText: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  removeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
 
   // Drawer
   overlayWrapper: { ...StyleSheet.absoluteFillObject, zIndex: 100 },
