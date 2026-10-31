@@ -19,10 +19,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0F",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "package": "com.app.heylo",
       "versionCode": 3,
